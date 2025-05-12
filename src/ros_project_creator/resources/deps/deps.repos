@@ -1,0 +1,22 @@
+# This is a template for creating a repository file. Replace the placeholders with actual values.
+#
+# Recommendations:
+# - For referencing internal repositories from Eurecat or private code repositories, it is advised to use
+#   SSH URLs (e.g., git@<server>:<repository_path>). This method requires:
+#     1. Possession of an SSH key pair (private and public keys).
+#     2. The public key must be registered in the private repository from which you want to download code.
+# - For projects hosted on public servers like GitHub, it is recommended to use HTTPS URLs
+#   (e.g., https://<server>/<repository_path>).
+#
+# repositories:
+#   <target_name>:
+#     type: git
+#     url: git@<server>:<repository_path>
+#     version: <branch_or_tag_or_commit>
+#     #exclude: [] # list of repos files inside repository_path to exclude (optional)
+#   <target_name>:
+#     type: git
+#     url: https://<server>/<repository_path>
+#     version: <branch_or_tag_or_commit>
+#     #exclude: [] # list of repos files inside repository_path to exclude (optional)
+

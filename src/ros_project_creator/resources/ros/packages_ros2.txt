@@ -1,0 +1,48 @@
+# For a list of all packages in each variant (ros_core, ros_base, perception, simulation, desktop,
+# desktop_full), go to the url https://github.com/ros2/variants.
+# desktop and desktop_full variants contain tutorials and examples, which are not necessary
+# for this development image.
+# No simulation (gazebo) packages are installed in this image, so Docker images for each project
+# should install them if needed.
+
+libasio-dev
+python3-colcon-alias
+python3-colcon-bazel
+python3-colcon-clean
+python3-colcon-common-extensions
+python3-colcon-coveragepy-result
+python3-colcon-ed
+python3-colcon-hardware-acceleration
+python3-colcon-lcov-result
+python3-colcon-meson
+python3-colcon-mixin
+python3-colcon-rerun
+python3-colcon-ros-distro
+python3-colcon-ros-domain-id-coordinator
+python3-colcon-spawn-shell
+python3-rosdep
+python3-vcstool
+ros-${ROS_DISTRO}-ros-base
+ros-${ROS_DISTRO}-angles
+ros-${ROS_DISTRO}-control-msgs
+ros-${ROS_DISTRO}-diagnostic-updater
+ros-${ROS_DISTRO}-eigenpy
+ros-${ROS_DISTRO}-eigen-stl-containers
+ros-${ROS_DISTRO}-image-common
+ros-${ROS_DISTRO}-image-pipeline
+ros-${ROS_DISTRO}-image-tools
+ros-${ROS_DISTRO}-image-transport-plugins
+ros-${ROS_DISTRO}-realtime-tools
+ros-${ROS_DISTRO}-ros-testing
+ros-${ROS_DISTRO}-ros2-control
+ros-${ROS_DISTRO}-ros2-controllers
+ros-${ROS_DISTRO}-rqt
+ros-${ROS_DISTRO}-rqt-common-plugins
+ros-${ROS_DISTRO}-rqt-controller-manager
+ros-${ROS_DISTRO}-rqt-joint-trajectory-controller
+ros-${ROS_DISTRO}-rqt-tf-tree
+ros-${ROS_DISTRO}-rviz2
+ros-${ROS_DISTRO}-topic-monitor
+ros-${ROS_DISTRO}-topic-tools
+ros-${ROS_DISTRO}-urdf-launch
+ros-${ROS_DISTRO}-xacro

@@ -1,0 +1,38 @@
+cmake_minimum_required(VERSION 3.8)
+project(bringup)
+
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD {{ c_version }})
+endif()
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD {{ cpp_version }})
+endif()
+
+# Compiler warnings
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic -Wnon-virtual-dtor -Woverloaded-virtual -Wnull-dereference -Wunused-parameter)
+endif()
+
+# Find required dependencies.
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+
+#find_package(<package> REQUIRED)
+
+# Install launch files.
+install(
+  DIRECTORY config launch rviz scripts test
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+# Linting and testing tools
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # Uncomment these lines to skip specific linters
+  # set(ament_cmake_copyright_FOUND TRUE)
+  # set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()

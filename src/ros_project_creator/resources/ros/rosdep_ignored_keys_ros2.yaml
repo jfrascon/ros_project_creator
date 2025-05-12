@@ -1,0 +1,9 @@
+# Ref: https://github.com/ros-infrastructure/rosdep/issues/649
+# Locally ignore a rosdep keys using empty list of packages: https://github.com/ros-infrastructure/rosdep/issues/649
+# Skip connextdds and gurumdds middleware packages.
+
+rmw_connextdds: {ubuntu: []}
+rmw_connextdds_common: {ubuntu: []}
+rti-connext-dds-cmake-module: {ubuntu: []}
+rmw_gurumdds_cpp: {ubuntu: []}
+gurumdds_cmake_module: {ubuntu: []}

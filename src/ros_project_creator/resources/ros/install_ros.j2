@@ -1,0 +1,170 @@
+#!/bin/bash
+
+# set -e
+
+log() {
+    local message="${1}"
+    local fd="${2:-1}" # default to 1 (stdout) if not provided
+
+    # Validate that fd is either 1 (stdout) or 2 (stderr)
+    if [[ "${fd}" != "1" && "${fd}" != "2" ]]; then
+        fd=1
+    fi
+
+    printf "[%s] %s\n" "$(date --utc '+%Y-%m-%d_%H-%M-%S')" "${message}" >&"${fd}"
+}
+
+# This script is run by root when building the Docker image.
+[ "$(id --user)" -ne 0 ] && {
+    log "Error: root user must be active to run the script '$(basename "${BASH_SOURCE[0]}")'" 2
+    exit 1
+}
+
+ROS_DISTRO="${1}"
+ROS_VERSION="${2}"
+IMG_USER="${3}"
+
+[ -z "${ROS_DISTRO}" ] && {
+    log "Error: No ROS_DISTRO provided" 2
+    exit 1
+}
+
+[ -z "${ROS_VERSION}" ] && {
+    log "Error: No ROS_VERSION provided" 2
+    exit 1
+}
+
+if [[ ! "${ROS_VERSION}" =~ ^(1|2)$ ]]; then
+    log "Error: Invalid ROS version '${ROS_VERSION}'. Must be 1 or 2." 2
+    exit 1
+fi
+
+[ -z "${IMG_USER}" ] && {
+    log "Error: No IMG_USER provided" 2
+    exit 1
+}
+
+img_user_home="$(getent passwd "${IMG_USER}" | cut -d: -f6)"
+
+[ -z "${img_user_home}" ] && {
+    log "Error: User '${IMG_USER}' does not exist" 2
+    exit 1
+}
+
+# Before proceding with the installation, check if there is already a ROS distro installed.
+# Extract the installed ROS distributions from the dpkg output, ensuring no leading or trailing whitespace.
+# If a ROS distro is installed in the system, the a package called ros-<distro>-ros-core exists.
+ros_distro=$(dpkg --list | sed -nE 's/^ii\s+ros-([a-z]+)-ros-core.*$/\1/p' | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+# Count the number of ROS distributions found
+num_distros=$(echo "${ros_distro}" | wc -w)
+
+if [ "${num_distros}" -gt 1 ]; then
+    log "Error: More than one ROS distro is installed: ${ros_distro}" 2
+    exit 1
+fi
+
+if [ "${num_distros}" -eq 1 ] && [ "${ros_distro}" != "${ROS_DISTRO}" ]; then
+    log "Error: Found ROS '${ros_distro}' installed, but ROS '${ROS_DISTRO}' was requested to install" 2
+    exit 1
+fi
+
+apt-get update # Required to load the cache in the build container
+apt-get install --yes --no-install-recommends python3-software-properties software-properties-common
+apt-get -f install --yes
+dpkg --configure -a
+
+# Now add-apt-repository is available, and we can add the universe repository that contains many
+# of the packages we need. Next, the index is updated, and the system is upgraded to ensure all packages are up to date.
+add-apt-repository --yes universe
+apt-get update
+apt-get install --yes --no-install-recommends curl gpg
+apt-get dist-upgrade --yes
+
+# Add ROS repo.
+gpg_dir="/etc/apt/keyrings"
+gpg_file="${gpg_dir}/ros.gpg"
+
+if [ ! -d "${gpg_dir}" ]; then
+    log "Creating directory '${gpg_dir}'"
+    mkdir --verbose --parent "${gpg_dir}"
+elif [ -f "${gpg_file}" ]; then
+    log "File '${gpg_file}' already exists, removing it"
+    rm -f "${gpg_file}"
+fi
+
+log "Adding ROS GPG key to file '${gpg_file}'"
+curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc |
+    gpg --dearmor --output - |
+    tee "${gpg_file}" >/dev/null
+
+# Set correct permissions
+sudo chmod 644 "${gpg_file}"
+sudo chown root:root "${gpg_file}"
+
+# Get relevant environment variables, included VERSION_CODENAME.
+. /etc/os-release
+
+if [ "${ROS_VERSION}" = "1" ]; then
+    url="http://packages.ros.org/ros/ubuntu"
+else
+    url="http://packages.ros.org/ros2/ubuntu"
+fi
+
+deb_pattern="^deb.*${url}[[:space:]]+${VERSION_CODENAME}[[:space:]]+main"
+deb_line="deb [arch=$(dpkg --print-architecture) signed-by=${gpg_file}] ${url} ${VERSION_CODENAME} main"
+list_file="/etc/apt/sources.list.d/ros.list"
+
+# Search for any file containing a matching ROS APT line and remove the line or the file, depending on the file where
+# the line is found.
+matched_files="$(grep -lE "${deb_pattern}" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null)"
+
+for matched_file in ${matched_files}; do
+    if [ "${matched_file}" = "/etc/apt/sources.list" ]; then
+        log "ROS deb line found in the file '${matched_file}', removing matching lines"
+        # Remove the line from the sources.list file.
+        sed -i -E "\#${deb_pattern}#d" "${matched_file}"
+    else
+        # Remove the file from sources.list.d.
+        log "Docker deb line found in the file '${matched_file}', removing file"
+        rm -f "${matched_file}"
+    fi
+done
+
+log "Adding custom ROS deb line to file '${list_file}'"
+echo "${deb_line}" | tee "${list_file}" >/dev/null
+
+apt-get update
+apt-get dist-upgrade --yes
+
+# Install the ROS packages.
+packages=(
+ {{ ros_packages }}
+)
+
+echo "Installing ROS packages: ${packages[*]}"
+
+valid_packages=()
+
+for package in "${packages[@]}"; do
+    if apt-cache policy "${package}" | grep --quiet 'Candidate:'; then
+        valid_packages+=("${package}")
+    else
+        log "Warning: Package '${package}' is missing in apt sources! Skipping installation"
+    fi
+done
+
+{% raw %}
+if [ "${#valid_packages[@]}" -gt 0 ]; then
+    log "Installing packages: ${valid_packages[*]}"
+    apt-get install --yes --no-install-recommends "${valid_packages[@]}"
+else
+    log "Warning: No packages to install"
+fi
+{% endraw %}
+
+log "Removing installation residues from apt cache"
+apt-get autoclean
+apt-get autoremove --purge -y
+apt-get clean
+rm -rf /var/lib/apt/lists/* 1>/dev/null 2>&1

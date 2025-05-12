@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>bringup</name>
+  <version>1.0.0</version>
+  <description>Package for bringing up ROS1 applications</description>
+  <maintainer email="eutrob@eurecat.org">eutrob</maintainer>
+  <author email="eutrob@eurecat.org">eutrob</author>
+  <license>Apache-2.0</license>
+
+  <!-- Build system dependencies -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Strictly runtime dependencies -->
+  <exec_depend>roslaunch</exec_depend>
+  <exec_depend>rviz</exec_depend>
+
+  <!-- Build-time and runtime dependencies -->
+
+  <!-- Test dependencies -->
+  <test_depend>roslint</test_depend>
+
+  <export>
+  </export>
+</package>

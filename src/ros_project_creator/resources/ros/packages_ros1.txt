@@ -1,0 +1,50 @@
+# For a list of all packages in each variant (ros_core, ros_base, robot, perception, desktop, desktop_full, simulators,
+# viz), go to the url https://github.com/ros/metapackages.
+# desktop and desktop_full variants contain tutorials and examples, which are not necessary for this development image.
+# No simulation (gazebo) packages are installed in this image, so Docker images for each project
+# should install them if needed.
+
+python3-catkin-tools
+python3-rosdep
+python3-rosinstall
+python3-rosinstall-generator
+python3-vcstool
+python3-wstool
+ros-${ROS_DISTRO}-robot
+ros-${ROS_DISTRO}-viz
+ros-${ROS_DISTRO}-catch-ros
+ros-${ROS_DISTRO}-catkin-virtualenv
+ros-${ROS_DISTRO}-collada-urdf
+ros-${ROS_DISTRO}-common-tutorials
+ros-${ROS_DISTRO}-control-toolbox
+ros-${ROS_DISTRO}-controller-manager
+ros-${ROS_DISTRO}-eigenpy
+ros-${ROS_DISTRO}-joint-state-controller
+ros-${ROS_DISTRO}-joint-state-publisher-gui
+ros-${ROS_DISTRO}-linux-peripheral-interfaces
+ros-${ROS_DISTRO}-log-view
+ros-${ROS_DISTRO}-message-to-tf
+ros-${ROS_DISTRO}-ros-numpy
+ros-${ROS_DISTRO}-ros-pytest
+ros-${ROS_DISTRO}-ros-realtime
+ros-${ROS_DISTRO}-ros-type-introspection
+ros-${ROS_DISTRO}-rosbaglive
+ros-${ROS_DISTRO}-rosbash-params
+ros-${ROS_DISTRO}-rosdiagnostic
+ros-${ROS_DISTRO}-rosmon
+ros-${ROS_DISTRO}-rosmsg-cpp
+ros-${ROS_DISTRO}-rosparam-shortcuts
+ros-${ROS_DISTRO}-rosping
+ros-${ROS_DISTRO}-rqt
+ros-${ROS_DISTRO}-rqt-controller-manager
+ros-${ROS_DISTRO}-rviz-animated-view-controller
+ros-${ROS_DISTRO}-rviz-visual-tools
+ros-${ROS_DISTRO}-tf-remapper-cpp
+ros-${ROS_DISTRO}-tf2-2d
+ros-${ROS_DISTRO}-tf2-bullet
+ros-${ROS_DISTRO}-tf2-client
+ros-${ROS_DISTRO}-tf2-sensor-msgs
+ros-${ROS_DISTRO}-tf2-server
+ros-${ROS_DISTRO}-tf2-tools
+ros-${ROS_DISTRO}-urdf-geometry-parser
+ros-${ROS_DISTRO}-urdfdom-py

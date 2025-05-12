@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>simulation</name>
+  <version>1.0.0</version>
+  <description>Package for launching and managing ROS2 simulations</description>
+  <maintainer email="eutrob@eurecat.org">eutrob</maintainer>
+  <author email="eutrob@eurecat.org">eutrob</author>
+  <license>Apache-2.0</license>
+
+  <!-- Build system dependencies -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <!-- Strictly runtime dependencies -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>launch_xml</exec_depend>
+  <exec_depend>launch_yaml</exec_depend>
+  <exec_depend>ros2launch</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <!-- Build-time and runtime dependencies -->
+
+
+  <!-- Test dependencies -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

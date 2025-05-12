@@ -1,0 +1,39 @@
+# Defines the directory where intermediate build files will be stored.
+# In this case, they will be placed in 'catkin_ws/build/'.
+build_space: "build"
+
+# Normally, 'devel_space' would be 'devel', but here it is set to 'install'.
+# This means that the build process will generate files directly in 'install' instead of 'devel'.
+devel_space: "install"
+
+# Indicates that packages should be installed in 'install' instead of 'devel'.
+# Equivalent to running 'catkin config --install'.
+install: true
+
+# If 'true', each package would have its own isolated 'devel' space.
+# Since 'install' is used, this option has no effect and is set to 'false'.
+isolate_devel: false
+
+# If 'true', each package would be installed in its own subdirectory within 'install'.
+# Since it is 'false', all packages share the same 'install' space, which is the standard configuration.
+isolate_install: false
+
+# Optimizes the build process by enabling job server support.
+# If 'true', it improves efficiency by handling multiple build jobs in parallel.
+jobserver: true
+
+# Defines the directory where build logs will be stored.
+# In this case, logs will be placed in 'catkin_ws/log/'.
+log_space: "log"
+
+# If 'true', attempts to merge all packages into a single 'devel' space.
+# Since 'install' is used, this is irrelevant and is set to 'false'.
+merge_devel: false
+
+# Defines the directory where source packages are located.
+# By default, Catkin expects ROS packages to be inside 'catkin_ws/src'.
+source_space: "src"
+
+# If 'true', enables verbose output during the build process.
+# If 'false', the output is more compact.
+verbose: false

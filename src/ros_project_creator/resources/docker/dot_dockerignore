@@ -1,0 +1,16 @@
+# Ignore version control folders
+.git/
+
+# Ignore local dependency files
+node_modules/
+*.log
+
+# Ignore local configuration files
+.env
+*.local
+
+# Ignore binaries or generated files
+dist/
+build/
+*.pyc
+__pycache__/

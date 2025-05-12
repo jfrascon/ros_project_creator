@@ -1,0 +1,93 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build Release",
+            "type": "shell",
+            // If new .msg or .srv files are added, they will not be detected until you force CMake
+            // to run again, for that reason --cmake-force-configure is added.
+            // --executor is parallel or sequential
+            // --parallel-worker is 0 for no limit (used when executor is parallel)
+            "command": "colcon build --merge-install --symlink-install --executor=parallel --parallel-workers=4 --cmake-force-configure --cmake-args -DCMAKE_CXX_STANDARD=<cpp_standard_num> -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_WARN_DEPRECATED=OFF -Wno-dev --mixin compile-commands && [ -f \"${workspaceFolder}/build/compile_commands.json\" ] && \\mv -f \"${workspaceFolder}/build/compile_commands.json\" \"${workspaceFolder}/compile_commands.json\"",
+            "options": {
+                "env": {}
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "build Debug",
+            "type": "shell",
+            "command": "colcon build --merge-install --symlink-install --executor=parallel --parallel-workers=4 --cmake-force-configure --cmake-args -DCMAKE_CXX_STANDARD=<cpp_standard_num> -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_WARN_DEPRECATED=OFF -Wno-dev --mixin compile-commands && [ -f \"${workspaceFolder}/build/compile_commands.json\" ] && \\mv -f \"${workspaceFolder}/build/compile_commands.json\" \"${workspaceFolder}/compile_commands.json\"",
+            "options": {
+                "env": {},
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "build RelWithDebInfo",
+            "type": "shell",
+            "command": "colcon build --merge-install --symlink-install --executor=parallel --parallel-workers=4 --cmake-force-configure --cmake-args -DCMAKE_CXX_STANDARD=<cpp_standard_num> -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo -DCMAKE_WARN_DEPRECATED=OFF -Wno-dev --mixin compile-commands && [ -f \"${workspaceFolder}/build/compile_commands.json\" ] && \\mv -f \"${workspaceFolder}/build/compile_commands.json\" \"${workspaceFolder}/compile_commands.json\"",
+            "options": {
+                "env": {},
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "clean", // remove build/, install/ and log/ folders in ${workspaceFolder}
+            "type": "shell",
+            "command": "colcon clean workspace -y",
+            "options": {},
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "echo predefined variables",
+            "type": "shell",
+            "command": "echo workspaceFolder: ${workspaceFolder} && echo workspaceFolderBasename: ${workspaceFolderBasename} && echo file: ${file} && echo fileWorkspaceFolder: ${fileWorkspaceFolder} && echo relativeFile: ${relativeFile} && echo relativeFileDirname: ${relativeFileDirname} && echo fileBasename: ${fileBasename} && echo fileBasenameNoExtension: ${fileBasenameNoExtension} && echo fileDirname: ${fileDirname} && echo fileExtname: ${fileExtname} && echo cwd: ${cwd}",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        }
+    ]
+}

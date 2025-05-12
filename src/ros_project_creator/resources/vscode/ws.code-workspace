@@ -1,0 +1,11 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "python.analysis.extraPaths": [
+  ],
+  "python.autoComplete.extraPaths": [
+  ],
+}

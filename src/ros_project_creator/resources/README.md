@@ -1,0 +1,5 @@
+# Project <project_id>
+
+[![GitLab CI](https://img.shields.io/badge/GitLab%20CI-Unknown-lightgrey?logo=gitlab)]()
+[![Coverage](https://img.shields.io/badge/Coverage-Unknown-lightgrey?logo=gitlab)]()
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)

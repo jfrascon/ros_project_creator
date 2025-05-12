@@ -1,0 +1,21 @@
+alias l="ls -lh --color=auto"
+alias la="ls -lha --color=auto"
+
+# Sort by modification time, oldest at the top
+alias lt="ls -lht --color=auto"
+alias lat="ls -lha --sort=time --time-style=long-iso --color=auto"
+
+# Sort by reverse modification time, newest at the top
+alias ltr="ls -lhtr --color=auto"
+alias latr="ls -lha --sort=time --reverse --time-style=long-iso --color=auto"
+
+# List only dot files.
+ldot() {
+    shopt -s nullglob dotglob
+    local hidden_files=(.??*)
+    if [ ${#hidden_files[@]} -gt 0 ]; then
+        ls -ld "${hidden_files[@]}"
+    else
+        echo "No hidden files found"
+    fi
+}

@@ -1,0 +1,49 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "dev",
+            "intelliSenseMode": "linux-gcc-x64", // Use gcc-compatible IntelliSense (or "linux-clang-x64" if preferred).
+            "compilerPath": "/usr/bin/g++",      // Used only when compileCommands is missing.
+            "cStandard": "{{ c_version }}",
+            "cppStandard": "{{ cpp_version }}",
+
+            // compileCommands provides exact compiler flags for each source file,
+            // including -I, -D, -std=..., and any other arguments used during the build.
+            // This is the most accurate way to configure IntelliSense.
+            // When this file is present, includePath, defines, and other fields are ignored.
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+
+            // includePath is only used if compileCommands.json is missing (e.g., after cleaning build/).
+            // It's a fallback for IntelliSense to function even when the build system is not initialized.
+            "includePath": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/install/include/**",
+                "/opt/ros/{{ ros_distro }}/include/**",
+                "/usr/include/**",
+                "/usr/local/include/**"
+            ],
+
+            // browse.path is used by the tag parser for symbol indexing ("Go to Symbol in Workspace").
+            // It does not affect IntelliSense or diagnostics, but improves navigation.
+            // These paths are indexed in the background.
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/src",
+                    "${workspaceFolder}/install/include",
+                    "/opt/ros/{{ ros_distro }}/include",
+                    "/usr/include",
+                    "/usr/local/include"
+                ],
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+                "limitSymbolsToIncludedHeaders": true
+            },
+
+            // Optional global -D macros (unused here).
+            "defines": []
+
+            // "configurationProvider" intentionally omitted because the project uses external build wrapper,
+            // rosbuild.sh, which generate compile_commands.json independently.
+        }
+    ]
+}

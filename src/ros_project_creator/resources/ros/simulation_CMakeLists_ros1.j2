@@ -1,0 +1,52 @@
+cmake_minimum_required(VERSION 3.0.2)
+project(simulation)
+
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD {{ c_version }})
+endif()
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD {{ cpp_version }})
+endif()
+
+# Compiler warnings
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic -Wnon-virtual-dtor -Woverloaded-virtual -Wnull-dereference -Wunused-parameter)
+endif()
+
+# Find catkin and required components
+find_package(catkin REQUIRED COMPONENTS
+  roslaunch
+  rviz
+)
+
+# Declare a catkin package.
+catkin_package(
+  # If you have include directories, libraries, or other dependencies to export, specify them here.
+  # INCLUDE_DIRS include
+  # LIBRARIES bringup
+  # CATKIN_DEPENDS...
+  # DEPENDS system_lib
+)
+
+# Include directories
+# include_directories(
+#   ${catkin_INCLUDE_DIRS}
+# )
+
+# add_executable(${PROJECT_NAME}_node src/simulation_node.cpp)
+# target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
+# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+# Install required directories.
+install(
+  DIRECTORY config launch scripts test
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+# Linting and testing tools.
+if(CATKIN_ENABLE_TESTING)
+  find_package(roslint REQUIRED)
+  roslint_cpp()
+  roslint_python()
+endif()

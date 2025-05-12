@@ -1,0 +1,39 @@
+#!/bin/bash
+
+export ROS_HOME="${ROS_HOME:-${HOME}/.ros}"
+export ROS_LOG_DIR="${ROS_LOG_DIR:-${HOME}/.ros/logs}"
+export ROS_TEST_RESULTS_DIR="${ROS_TEST_RESULTS_DIR:-${HOME}/.ros/tests}"
+export ROS_CONFIG_HOME="${ROS_CONFIG_HOME:-${HOME}/.config/ros.org}"
+export RTI_NC_LICENSE_ACCEPTED="${RTI_NC_LICENSE_ACCEPTED:-no}"
+export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
+export ROS_LOCALHOST_ONLY="${ROS_LOCALHOST_ONLY:-1}"
+export RCUTILS_COLORIZED_OUTPUT="${RCUTILS_COLORIZED_OUTPUT:-1}"
+export RCUTILS_LOGGING_USE_STDOUT="${RCUTILS_LOGGING_USE_STDOUT:-1}"
+export RCUTILS_LOGGING_BUFFERED_STREAM="${RCUTILS_LOGGING_BUFFERED_STREAM:-1}"
+export RCUTILS_CONSOLE_OUTPUT_FORMAT="${RCUTILS_CONSOLE_OUTPUT_FORMAT:-"[{severity}] {time} {name}: {message}"}"
+
+# [{severity} {time}] [{name}]: {message} ({function_name}() at {file_name}:{line_number})
+
+# Check if workspace setup exists
+if [ -s "${HOME}/workspace/install/setup.bash" ]; then
+    . "${HOME}/workspace/install/setup.bash"
+elif [ -s "/opt/ros/{{ ros_distro }}/setup.bash" ]; then
+    . "/opt/ros/{{ ros_distro }}/setup.bash"
+else
+    echo "No ROS installation found"
+    exit 1
+fi
+
+[ -s /usr/share/gazebo/setup.sh ] && . /usr/share/gazebo/setup.sh
+[ -s /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ] && . /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
+[ -s /usr/share/colcon_cd/function/colcon_cd.sh ] && . /usr/share/colcon_cd/function/colcon_cd.sh
+
+export PATH="$(deduplicate_path.sh "${HOME}/.local/bin:${PATH}")"
+export CMAKE_PREFIX_PATH="$(deduplicate_path.sh "${CMAKE_PREFIX_PATH}")"
+export LD_LIBRARY_PATH="$(deduplicate_path.sh "${LD_LIBRARY_PATH}")"
+export PKG_CONFIG_PATH="$(deduplicate_path.sh "${PKG_CONFIG_PATH}")"
+export PYTHONPATH="$(deduplicate_path.sh "${PYTHONPATH}")"
+export AMENT_PREFIX_PATH="$(deduplicate_path.sh "${AMENT_PREFIX_PATH}")"
+export AMENT_CURRENT_PREFIX="$(deduplicate_path.sh "${AMENT_CURRENT_PREFIX}")"
+export COLCON_PREFIX_PATH="$(deduplicate_path.sh "${COLCON_PREFIX_PATH}")"

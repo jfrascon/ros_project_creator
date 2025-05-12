@@ -1,0 +1,70 @@
+# References for clang-tidy.
+# https://devblogs.microsoft.com/cppblog/visual-studio-code-c-december-2021-update-clang-tidy/
+# https://clang.llvm.org/extra/clang-tidy/
+# https://clang.llvm.org/extra/clang-tidy/checks/list.html
+# To see the checks enabled by default in clang-tidy, type in the terminal:
+# > clang-tidy -list-checks
+# To see all the checks available in clang-tidy, type in the terminal:
+# > clang-tidy -list-checks -checks=*
+
+# Enable specific clang-tidy checks while disabling all others by default.
+# 1. '-*' disables all checks initially.
+# 2. The following patterns enable specific checks or groups of checks.
+#    - Group patterns (e.g., 'bugprone-*') enable all checks within that category.
+#    - Individual checks (e.g., 'boost-use-to-string') are explicitly enabled.
+# 3. The '>-' YAML operator is used to write multiline values as a single-line string
+#    while automatically removing the trailing newline. This ensures that the final
+#    value is correctly interpreted as a comma-separated list, without introducing
+#    unwanted formatting issues.
+# Clang-Tidy configuration file
+# 1. All checks are disabled by default (-*).
+# 2. Specific groups of checks are enabled.
+# 3. Some checks within those groups are explicitly disabled.
+
+Checks: >-
+  -*,
+  abseil-*,
+  boost-use-to-string,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-type-vararg,
+  google-*,
+  hicpp-*,
+  llvm-*,
+  -llvm-include-order,
+  misc-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  portability-*,
+  readability-*
+
+# This option controls whether warnings should be treated as errors.
+# - If set to '*', all warnings will be considered errors and can break the build.
+# - If set to a specific list (e.g., 'bugprone-*'), only those warnings become errors.
+# - If empty (''), warnings remain as warnings (default behavior).
+WarningsAsErrors: ''  # No warnings are treated as errors.
+
+# This option defines which header files should be analyzed by clang-tidy.
+# - If set to '', all headers in the project will be analyzed.
+# - If set to a regex (e.g., '(src|include)/.*\.h'), only matching headers will be analyzed.
+# - This is useful for excluding third-party headers or limiting analysis scope.
+HeaderFilterRegex: ''  # All header files are analyzed.
+
+# This option controls whether clang-tidy applies code formatting.
+# - 'none' means clang-tidy will not modify the formatting.
+# - 'file' makes it follow rules from a .clang-format file if present.
+# - 'llvm', 'google', etc., apply predefined formatting styles.
+# - Keeping 'none' ensures clang-tidy only performs static analysis without altering code style.
+FormatStyle: none  # Clang-tidy will not format the code.
+
+
+# If you run clang-tidy from the terminal it is very common to see the following statement:
+# > clang-tidy test.cpp -checks=-*,clang-analyzer-*,-clang-analyzer-cplusplus*
+# 1. All the checks clang-tidy understands are disabled: -*.
+# 2. One or more group of checks are enabled: clang-analyzer-*.
+# 3. Some checks within those groups of checks are disabled: -clang-analyzer-cplusplus*

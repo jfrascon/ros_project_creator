@@ -1,0 +1,46 @@
+# https://docs.docker.com/compose/environment-variables/#the-env-file
+services:
+  {{ service }}:
+    image: {{ img_id }}
+    user: root
+    tty: true
+    stdin_open: true
+    network_mode: host
+    privileged: false
+    cap_add:
+      - NET_ADMIN # Be able to create network devices inside the container
+    volumes:
+      # +------------------+
+      # | Project mappings |
+      # +------------------+
+      - {{ workspace_dir }}:{{ img_workspace_dir}}
+      # +------------------+
+      # | Dataset mappings |
+      # +------------------+
+      #- ~/datasets:{{ img_datasets_dir }}
+      # +-------------------+
+      # | Graphics mappings |
+      # +-------------------+
+      - /tmp/.cookies.xauth:/tmp/.cookies.xauth:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # +-----------------+
+      # | Custom mappings |
+      # +-----------------+
+      # Folders
+      - ~/.ssh:{{ img_ssh_dir }}
+      # Files
+      {% if use_git %}
+      - {{ gitconfig_file }}:{{ img_gitconfig_file }}
+      {% endif %}
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+      - /dev/dri:/dev/dri
+    #device_cgroup_rules:
+      #- "c 189:* rmw"
+    environment:
+      - DISPLAY=$DISPLAY
+      - QT_X11_NO_MITSHM=1
+      - TERM=$TERM
+      - XAUTHORITY=/tmp/.cookies.xauth
+      - EXT_UID={{ ext_uid }}
+      - EXT_UPGID={{ ext_upgid }}
