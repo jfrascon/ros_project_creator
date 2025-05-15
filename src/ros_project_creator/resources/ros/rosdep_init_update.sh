@@ -118,7 +118,7 @@ log "Executing rosdep update as root. Ignore the warning about running as root"
 log "rosdep database ownership will be fixed later"
 rosdep update --rosdistro "${ROS_DISTRO}"
 
-log "Installing dependencies for packages in the path /opt/ros/${ROS_DISTRO}/share/"
+log "Installing dependencies for packages in the paths '${PROJECT_SRC_DIR}' and '/opt/ros/${ROS_DISTRO}/share/'"
 # Update cache to ensure the latest package information is available.
 apt-get update
 rosdep install -y --rosdistro "${ROS_DISTRO}" --from-paths "${PROJECT_SRC_DIR}" "/opt/ros/${ROS_DISTRO}/share/" --ignore-src
