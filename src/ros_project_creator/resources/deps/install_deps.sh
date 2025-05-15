@@ -1,5 +1,49 @@
 #!/bin/bash
 
+install_packages() {
+    local packages=("$@")
+    local sim_out
+    local sim_rc
+    local valid_packages=()
+    local bad_packages=()
+    local pkg
+
+    sim_out="$(apt-get --simulate --quiet --quiet --no-install-recommends -o Dpkg::Use-Pty=0 install "${packages[@]}" 2>&1)"
+    sim_rc=$?
+
+    if [ "${sim_rc}" -ne 0 ] && [ "${sim_rc}" -ne 100 ]; then
+        log "Error: apt-get simulation failed unexpectedly (rc=${sim_rc})" 2
+        exit 1
+    fi
+
+    if [ "${sim_rc}" -eq 0 ]; then
+        valid_packages=("${packages[@]}")
+    else
+        mapfile -t bad_packages < <(
+            grep -oP 'Unable to locate package \K\S+' <<<"${sim_out}"
+        )
+
+        for pkg in "${packages[@]}"; do
+            if ! echo " ${bad_packages[*]} " | grep -q " ${pkg} "; then
+                valid_packages+=("${pkg}")
+            fi
+        done
+    fi
+
+    if [ "${#bad_packages[@]}" -gt 0 ]; then
+        log "Packages not installable: ${bad_packages[*]}" 2
+    fi
+
+    if [ "${#valid_packages[@]}" -gt 0 ]; then
+        log "Installing packages: ${valid_packages[*]}"
+
+        if ! apt-get install --yes --no-install-recommends "${valid_packages[@]}"; then
+            log "Error: Failed to install some packages: ${valid_packages[*]}" 2
+            exit 1
+        fi
+    fi
+}
+
 log() {
     local message="${1}"
     local fd="${2:-1}" # default to 1 (stdout) if not provided
@@ -27,11 +71,9 @@ apt-get dist-upgrade --yes
 
 apt-get install --yes --no-install-recommends curl gpg
 
-# + --------------------------------------------+
-# | Install system dependencies for the project |
-# + --------------------------------------------+
-
-# WARNING: INSTALLING SYSTEM PACKAGES THROUGH THIS SCRIPT IS NOT RECOMMENDED!
+# + ------------------------+
+# | Install system packages |
+# + ------------------------+
 
 # IT IS STRONGLY ADVISED TO DECLARE REQUIRED SYSTEM DEPENDENCIES IN THE APPROPRIATE
 # PACKAGE'S package.xml FILE UNDER THE <depend> OR <build_depend> OR <exec_depend> TAGS.
@@ -41,33 +83,31 @@ apt-get install --yes --no-install-recommends curl gpg
 # NECESSARY AND CANNOT BE RESOLVED VIA rosdep. IMPROPER USE OF THIS SCRIPT FOR
 # SYSTEM PACKAGE INSTALLATION MAY LEAD TO INCONSISTENCIES IN DEPENDENCY RESOLUTION.
 
-# Fill in the array, either adding packages directly into the array system_deps, separated by spaces, or new lines
-system_packages=()
+# install_packages "pkg1" "pkg2" "pkg3"
 
-valid_system_packages=() # DO NOT FILL THIS ARRAY MANUALLY
+# + ---------------------+
+# | Install ROS packages |
+# + ---------------------+
 
-for system_package in "${system_packages[@]}"; do
-    if apt-cache policy "${system_package}" | grep --quiet 'Candidate:'; then
-        valid_system_packages+=("${system_package}")
-    else
-        log "Warning: Package '${package}' is missing in system repositories"
-    fi
-done
-
-if [ "${#valid_system_packages[@]}" -gt 0 ]; then
-    echo "Installing packages: ${valid_system_packages[@]}"
-    apt-get install --yes --no-install-recommends "${valid_system_packages[@]}"
-fi
-
-# WARNING: INSTALLING ROS PACKAGES THROUGH THIS SCRIPT IS NOT RECOMMENDED!
-#
-# IT IS STRONGLY ADVISED TO DECLARE REQUIRED ROS DEPENDENCIES IN THE APPROPRIATE
-# PACKAGE'S package.xml FILE UNDER THE <depend>, <build_depend>, OR <exec_depend> TAGS.
+# IT IS STRONGLY ADVISED TO DECLARE REQUIRED ROS DEPENDENCIES IN THE APPROPRIATE PACKAGE'S
+# package.xml FILE UNDER THE <depend>, <build_depend>, OR <exec_depend> TAGS.
 # THIS ENSURES PROPER DEPENDENCY MANAGEMENT, AUTOMATIC RESOLUTION VIA rosdep,
 # AND COMPATIBILITY ACROSS DIFFERENT ENVIRONMENTS.
 
-# FOR THIS REASON THE SKELETON TO INSTALL ROS PACKAGES IS NOT PROVIDED LIKE FOR SYSTEM PACKAGES, TO
-# PERSUADE YOU TO USE THE PROPER WAY OF DECLARING DEPENDENCIES IN THE package.xml FILES.
+# Check if ${ROS_DISTRO} is installed properly, otherwise abort the installation.
+# ros_distro=$(dpkg --list | sed -nE 's/^ii\s+ros-([a-z]+)-ros-core.*$/\1/p' | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+# num_distros=$(echo "${ros_distro}" | wc -w)
+
+# if [ "${num_distros}" -eq 0 ]; then
+#     log "No ROS distribution found. Please install a ROS distribution before running the script '$(basename "${BASH_SOURCE[0]}")'"
+#     exit 1
+# elif [ "${num_distros}" -eq 1 ]; then
+#     install_packages ros-"${ros_distro}"-<package>
+# else # multiple distributions found
+#     log "Warning: Multiple ROS distributions detected"
+#     exit 1
+# fi
 
 # +--------------------------------------------------------------------------------------------------------------------+
 # FOR EXAMPLE, IN CASE YOU WANT TO INSTALL PACKAGES FROM GAZEBO CLASSIC, UNCOMMENT THE LINES BELOW
