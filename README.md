@@ -219,4 +219,3 @@ For any questions or suggestions, please reach out to:
 
 - **Juan Francisco Rascon**
 - Email: [jfrascon@gmail.com](mailto:jfrascon@gmail.com)
-
