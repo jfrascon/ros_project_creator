@@ -45,6 +45,50 @@ detect_nvidia_libraries() {
     return 1
 }
 
+install_packages() {
+    local packages=("$@")
+    local sim_out
+    local sim_rc
+    local valid_packages=()
+    local bad_packages=()
+    local pkg
+
+    sim_out="$(apt-get --simulate --quiet --quiet --no-install-recommends -o Dpkg::Use-Pty=0 install "${packages[@]}" 2>&1)"
+    sim_rc=$?
+
+    if [ "${sim_rc}" -ne 0 ] && [ "${sim_rc}" -ne 100 ]; then
+        log "Error: apt-get simulation failed unexpectedly (rc=${sim_rc})" 2
+        exit 1
+    fi
+
+    if [ "${sim_rc}" -eq 0 ]; then
+        valid_packages=("${packages[@]}")
+    else
+        mapfile -t bad_packages < <(
+            grep -oP 'Unable to locate package \K\S+' <<<"${sim_out}"
+        )
+
+        for pkg in "${packages[@]}"; do
+            if ! echo " ${bad_packages[*]} " | grep -q " ${pkg} "; then
+                valid_packages+=("${pkg}")
+            fi
+        done
+    fi
+
+    if [ "${#bad_packages[@]}" -gt 0 ]; then
+        log "Packages not installable: ${bad_packages[*]}" 2
+    fi
+
+    if [ "${#valid_packages[@]}" -gt 0 ]; then
+        log "Installing packages: ${valid_packages[*]}"
+
+        if ! apt-get install --yes --no-install-recommends "${valid_packages[@]}"; then
+            log "Error: Failed to install some packages: ${valid_packages[*]}" 2
+            exit 1
+        fi
+    fi
+}
+
 log() {
     local message="${1}"
     local fd="${2:-1}" # default to 1 (stdout) if not provided
@@ -198,22 +242,7 @@ packages=(
     vim
 )
 
-valid_packages=()
-
-for package in "${packages[@]}"; do
-    if apt-cache policy "${package}" | grep --quiet 'Candidate:'; then
-        valid_packages+=("${package}")
-    else
-        log "Warning: Package '${package}' is missing in system repositories"
-    fi
-done
-
-if [ "${#valid_packages[@]}" -gt 0 ]; then
-    log "Installing packages: ${valid_packages[*]}"
-    apt-get install --yes --no-install-recommends "${valid_packages[@]}"
-else
-    log "No packages to install"
-fi
+install_packages "${packages[@]}"
 
 if should_install_mesa; then
     if [ -s "${INSTALL_MESA_PACKAGES_SCRIPT}" ]; then
