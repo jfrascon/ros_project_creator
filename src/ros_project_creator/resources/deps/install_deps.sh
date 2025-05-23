@@ -121,6 +121,7 @@ apt-get install --yes --no-install-recommends curl gpg
 # | Custom instructions |
 # +---------------------+
 
-apt-get clean autoclean
-apt-get autoremove --yes
-rm -rf /var/lib/apt/lists/*
+apt-get autoclean
+apt-get autoremove --purge -y
+apt-get clean
+rm -rf /var/lib/apt/lists/* 1>/dev/null 2>&1
