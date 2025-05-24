@@ -78,9 +78,5 @@
   // ==========================================================================
   "xmlTools.enableXmlTreeView": true,
   "xmlTools.splitAttributesOnFormat": true,
-  "xmlTools.xmlFormatterImplementation": "v2",
-  // ==========================================================================
-  // ROS SETTINGS
-  // ==========================================================================
-  "ros.distro": "{{ ros_distro }}"
+  "xmlTools.xmlFormatterImplementation": "v2"
 }

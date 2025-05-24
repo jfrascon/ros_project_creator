@@ -87,12 +87,12 @@ class VscodeProjectCreator:
             self._vscode_templates_dir, f"Directory '{self._vscode_templates_dir}' is required"
         )
 
-        self._vscode_workspace_template = self._vscode_templates_dir.joinpath("ws.code-workspace")
+        self._vscode_workspace_template = self._vscode_templates_dir.joinpath("ws.j2")
         Utilities.assert_file_existence(
             self._vscode_workspace_template, f"Template '{self._vscode_workspace_template}' is required"
         )
 
-        self._vscode_settings_template = self._vscode_templates_dir.joinpath("settings.j2")
+        self._vscode_settings_template = self._vscode_templates_dir.joinpath("settings.json")
         Utilities.assert_file_existence(
             self._vscode_settings_template, f"Template '{self._vscode_settings_template}' is required"
         )
@@ -131,24 +131,24 @@ class VscodeProjectCreator:
         vscode_dir = self._workspace_dir.joinpath(".vscode")
         Utilities.mkdir(vscode_dir, 0o755, self._logger.info)
 
-        vscode_workspace_file = self._workspace_dir.joinpath("ws.code-workspace")
-        Utilities.copy_file(self._vscode_workspace_template, vscode_workspace_file, 0o644, self._logger.info)
-
         # trim_block removes the first newline after a block (e.g., after {% endif %}).
         # lstrip_blocks strips leading whitespace from the start of a block line.
         jinja2_env = Environment(
             loader=FileSystemLoader(self._vscode_templates_dir), trim_blocks=True, lstrip_blocks=True
         )
 
-        vscode_settings_file = vscode_dir.joinpath("settings.json")
+        vscode_workspace_file = self._workspace_dir.joinpath("ws.code-workspace")
         Utilities.install_template(
             jinja2_env,
-            self._vscode_settings_template,
+            self._vscode_workspace_template,
             {"ros_distro": self._ros_variant.get_distro()},
-            vscode_settings_file,
+            vscode_workspace_file,
             0o644,
             self._logger.info,
         )
+
+        vscode_settings_file = vscode_dir.joinpath("settings.json")
+        Utilities.copy_file(self._vscode_settings_template, vscode_settings_file, 0o644, self._logger.info)
 
         vscode_c_cpp_properties_file = vscode_dir.joinpath("c_cpp_properties.json")
         Utilities.install_template(
