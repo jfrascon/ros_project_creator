@@ -24,10 +24,10 @@ WORKDIR /
 # Using the pattern COPY+RUN we can benefit from Docker's build cache.
 # The copied files are lightweight, therefore the size of the associated layer is small.
 # The script install_core.sh is responsible for installing system dependencies.
-COPY --chmod=755 docker/.resources/install_core.sh docker/.resources/install_mesa_packages.sh /tmp/
-RUN /tmp/install_core.sh "${REQUESTED_USER}" "${USE_NVIDIA_SUPPORT}" /tmp/install_mesa_packages.sh && rm -rf /tmp/install_core.sh && rm -rf /tmp/install_mesa_packages.sh
+COPY --chmod=775 docker/.resources/install_base_system.sh docker/.resources/install_mesa_packages.sh /tmp/
+RUN /tmp/install_base_system.sh "${REQUESTED_USER}" "${USE_NVIDIA_SUPPORT}" /tmp/install_mesa_packages.sh && rm -rf /tmp/install_base_system.sh && rm -rf /tmp/install_mesa_packages.sh
 
-COPY --chmod=755 docker/.resources/install_ros.sh /tmp/install_ros.sh
+COPY --chmod=775 docker/.resources/install_ros.sh /tmp/install_ros.sh
 RUN /tmp/install_ros.sh "${ROS_DISTRO}" "${ROS_VERSION}" "${REQUESTED_USER}" && rm -rf /tmp/install_ros.sh
 
 # The following block is always re-executed and is NOT cached intentionally.
@@ -49,13 +49,6 @@ img_user_entry="$(getent passwd "${img_user}")"
     log "Error: Script entrypoint.sh not provided" >&2
     exit 1
 }
-
-# If the user to be created is not root, the script environment_root.sh must be provided, so root
-# user can use a (minimal) environment.
-if [ "${img_user}" != root ] && [ ! -f /tmp/context/docker/environment_root.sh ]; then
-    log "Error: Script environment_root.sh not provided" >&2
-    exit 1
-fi
 
 [ ! -f /tmp/context/docker/environment.sh ] && {
     log "Error: Script environment.sh not provided" >&2
@@ -83,33 +76,42 @@ ros_distro=$(dpkg --list | sed -nE 's/^ii\s+ros-([a-z]+)-ros-core.*$/\1/p' | tr 
 num_distros=$(echo "${ros_distro}" | wc -w)
 
 # If no ROS_DISTRO is found at this point, exit with an error.
-[ "${num_distros}" -eq 0 ] && {
-    log "Error: No ROS_DISTRO found" >&2
+if [ "${num_distros}" -eq 0 ]; then
+    log "Error: No ROS distribution found" >&2
     exit 1
-}
+fi
 
-[ "${num_distros}" -gt 1 ] && {
+if [ "${num_distros}" -gt 1 ]; then
     log "Error: More than one ROS_DISTRO found: ${ros_distro}" >&2
     exit 1
-}
+fi
 
-[ "${ros_distro}" != "${ROS_DISTRO}" ] && {
-    log "Error: Found ROS_DISTRO='${ros_distro}', expected ROS_DISTRO='${ROS_DISTRO}'" >&2
+if [ "${ROS_DISTRO}" != "${ros_distro}" ]; then
+    log "Error: Found ROS_DISTRO '${ros_distro}', expected ROS_DISTRO '${ROS_DISTRO}'" >&2
     exit 1
-}
+fi
 
 rosdep_ignored_key_file=/tmp/context/docker/.resources/rosdep_ignored_keys.yaml
 cp /tmp/context/docker/.resources/rosdep_init_update.sh /tmp/rosdep_init_update.sh
-chmod 755 /tmp/rosdep_init_update.sh
-/tmp/rosdep_init_update.sh "${ROS_DISTRO}" "${img_user}" "${rosdep_ignored_key_file}" /tmp/context/src
+chmod 775 /tmp/rosdep_init_update.sh
+
+src_dir="/tmp/context/src"
+
+if [ ! -d "${src_dir}" ]; then
+    log "Error: Source directory '${src_dir}' does not exist" >&2
+    exit 1
+fi
+
+/tmp/rosdep_init_update.sh "${ROS_DISTRO}" "${img_user}" "${rosdep_ignored_key_file}" "${src_dir}"
 rm -f /tmp/rosdep_init_update.sh
 
 if [ -s /tmp/context/docker/.resources/colcon_mixin_metadata.sh ]; then
     cp /tmp/context/docker/.resources/colcon_mixin_metadata.sh /tmp/colcon_mixin_metadata.sh
-    chmod 755 /tmp/colcon_mixin_metadata.sh
+    chmod 775 /tmp/colcon_mixin_metadata.sh
     /tmp/colcon_mixin_metadata.sh "${img_user}"
+    rm -f /tmp/colcon_mixin_metadata.sh
 else
-    log "No colcon_mixin_metadata.sh script found, skipping colcon mixin metadata installation"
+    log "Error: No colcon_mixin_metadata.sh script found, skipping colcon mixin metadata installation"
 fi
 
 # Execute the custom dependency install script for the project.
@@ -125,27 +127,22 @@ log "Setting ownership of path '${img_user_home}' to user '${img_user}' (UID '${
 chown --recursive "${img_user}":"${img_user_pri_group}" "${img_user_home}"
 
 # Install utility scripts and environment files system-wide or per-user.
-log "Installing file /usr/local/bin/entrypoint.sh" >&2
-install --owner root --group root --mode 755 /tmp/context/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+log "Installing file '/usr/local/bin/entrypoint.sh'" >&2
+install --owner root --group root --mode 775 /tmp/context/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-log "Installing file /usr/local/bin/deduplicate_path.sh"
-install --owner root --group root --mode 755 /tmp/context/docker/.resources/deduplicate_path.sh /usr/local/bin/deduplicate_path.sh
+log "Installing file '/usr/local/bin/deduplicate_path.sh'"
+install --owner root --group root --mode 775 /tmp/context/docker/.resources/deduplicate_path.sh /usr/local/bin/deduplicate_path.sh
 
-log "Installing file /usr/local/bin/rosbuild.sh"
-install --owner root --group root --mode 755 /tmp/context/docker/.resources/rosbuild.sh /usr/local/bin/rosbuild.sh
-
-if [ "${img_user}" != "root" ]; then
-    log "Installing file /root/.environment.sh"
-    install --owner root --group root --mode 755 /tmp/context/docker/environment_root.sh /root/.environment.sh
-fi
+log "Installing file '/usr/local/bin/rosbuild.sh'"
+install --owner root --group root --mode 775 /tmp/context/docker/.resources/rosbuild.sh /usr/local/bin/rosbuild.sh
 
 # An environment script is installed in the home directory of the '${img_user}'.
-log "Installing file ${img_user_home}/.environment.sh"
-install --owner "${img_user}" --group "${img_user_pri_group}" --mode 755 /tmp/context/docker/environment.sh "${img_user_home}/.environment.sh"
+log "Installing file '${img_user_home}/.environment.sh'"
+install --owner "${img_user}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/environment.sh "${img_user_home}/.environment.sh"
 
 # Optional: install .bash_aliases if present
 if [ -e /tmp/context/docker/.resources/dot_bash_aliases ]; then
-    install --owner "${img_user}" --group "${img_user_pri_group}" --mode 755 /tmp/context/docker/.resources/dot_bash_aliases "${img_user_home}/.bash_aliases"
+    install --owner "${img_user}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/.resources/dot_bash_aliases "${img_user_home}/.bash_aliases"
 fi
 
 log "Removing installation residues from apt cache"

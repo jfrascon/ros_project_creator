@@ -1,0 +1,448 @@
+#!/usr/bin/env python3
+
+import argparse
+from datetime import datetime, timezone
+import getpass
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+if __name__ == "__main__":
+
+    def img_exists_locally(img: str) -> bool:
+        cmd = ["docker", "image", "inspect", img]
+        # capture=True -> stdout y stderr redireted to PIPE (they are not shown in the terminal)
+        # check=False  -> it does not throw exception if the image does not exist
+        result = run_command(cmd, capture=True, check=False)
+        return result.returncode == 0
+
+    def import_dependencies(context_dir: Path, log_file: Path) -> None:
+        """
+        If deps.repos and the 0_deps directory exist, and the `rv` tool is available,
+        recursively import dependencies into the 0_deps directory using `rv`.
+
+        The output is printed in real-time to the terminal and also written to `log_file`.
+
+        Raises:
+            subprocess.CalledProcessError if 'rv import' returns a non-zero code.
+        """
+        deps_file = context_dir.joinpath("deps.repos")
+        deps_target_dir = context_dir.joinpath("src", "0_deps")
+
+        if not deps_file.is_file():
+            print(f"No dependency file found at '{deps_file}', skipping dependency import")
+            return
+
+        if not deps_target_dir.is_dir():
+            print(f"Target directory '{deps_target_dir}' does not exist, skipping dependency import")
+            return
+
+        if shutil.which("rv") is None:
+            print("Command 'rv' not found in PATH, skipping dependency import")
+            print("Installation instructions: https://github.com/ErickKramer/ripvcs?tab=readme-ov-file#-installation")
+            return
+
+        print(f"Importing dependencies from the file '{deps_file}' into the path '{deps_target_dir}'")
+
+        cmd = ["rv", "import", "-i", str(deps_file), "-r", str(deps_target_dir)]
+
+        with subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+        ) as process, open(log_file, "w") as log:
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                log.write(line)
+
+            # Ensure the log file is flushed to disk.
+            full_log.flush()
+            process.wait()
+
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
+
+    def is_valid_docker_img_name(name: str) -> bool:
+        """
+        Validate a Docker image name according to Docker's official naming rules.
+
+        Format:
+            [HOST[:PORT_NUMBER]/]PATH[:TAG]
+
+        See: https://docs.docker.com/get-started/docker-concepts/building-images/build-tag-and-publish-an-image/#tagging-images
+        """
+
+        # Optional registry prefix: host (lower‑case letters, digits, dots, dashes)
+        # with optional :PORT, followed by a slash.
+        host_and_port_prefix = r"([a-z0-9.-]+(:[0-9]+)?/)?"
+
+        # A separator inside a path component can be:
+        #   • a single dot
+        #   • one or two underscores
+        #   • one or more dashes
+        path_separator = r"(?:\.|_{1,2}|-+)"
+
+        # A path component must start and end with an alphanumeric character,
+        # separators are allowed only between alphanumerics.
+        path_component = rf"[a-z0-9]+(?:{path_separator}[a-z0-9]+)*"
+
+        # PATH = one or more components separated by '/'
+        path_re = rf"{path_component}(/{path_component})*"
+
+        # Optional TAG: colon + allowed characters (letters, digits, '_', '.', '-')
+        tag_re = r"(:[a-zA-Z0-9_.-]+)?"
+
+        # Full regex combining all parts
+        full_re = re.compile(rf"^{host_and_port_prefix}{path_re}{tag_re}$")
+
+        return bool(full_re.match(name))
+
+    def parse_img_name(full_img_name: str) -> tuple[str, str]:
+        """
+        Parses a full Docker image name into its repository and tag components.
+        If no tag is explicitly provided, 'latest' is assumed.
+
+        Raises ValueError if the image name format is invalid according to is_valid_docker_img_name.
+
+        This version assumes `is_valid_docker_img_name` is strict and rejects names like "image:" (where
+        a tag is implied but empty).
+
+        Examples:
+            "ubuntu" -> ("ubuntu", "latest")
+            "ubuntu:22.04" -> ("ubuntu", "22.04")
+            "myregistry.com/ubuntu:22.04" -> ("myregistry.com/ubuntu", "22.04")
+            "myregistry.com:5000/ubuntu" -> ("myregistry.com:5000/ubuntu", "latest")
+            "myregistry.com:5000/ubuntu:22.04" -> ("myregistry.com:5000/ubuntu", "22.04")
+            "image:" would be rejected by is_valid_docker_img_name before this function is effectively called
+                    or would cause this function to raise ValueError if called directly.
+        """
+        if not is_valid_docker_img_name(full_img_name):
+            raise ValueError(f"Identifier '{full_img_name}' is not a valid Docker image name")
+
+        repository = full_img_name
+        tag = "latest"
+
+        last_colon_idx = full_img_name.rfind(":")
+
+        if last_colon_idx != -1:
+            # A colon exists. Determine if it's for a tag or part of host:port.
+            is_part_of_host_port = False
+            # If a slash exists *after* this last colon, it means the colon was part of a host:port.
+            if "/" in full_img_name[last_colon_idx + 1 :]:
+                is_part_of_host_port = True
+
+            if not is_part_of_host_port:
+                # This colon is for the tag.
+                # Since is_valid_docker_img_name is strict, the tag part cannot be empty.
+                repository = full_img_name[:last_colon_idx]
+                tag = full_img_name[last_colon_idx + 1 :]
+
+        return repository, tag
+
+    def run_command(
+        cmd: list[str], capture: bool = False, check: bool = True, cwd: Path | None = None
+    ) -> subprocess.CompletedProcess:
+        return subprocess.run(cmd, check=check, text=True, capture_output=capture, cwd=cwd)
+
+    # ==============================================================================================
+    # Main execution block
+    # ==============================================================================================
+
+    parser = argparse.ArgumentParser(
+        description="{{ description }}",
+        allow_abbrev=False,  # Disable prefix matching
+        add_help=False,  # Add custom help message
+        formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=38),
+    )
+
+    parser.add_argument(
+        "-h", "--help", action="help", default=argparse.SUPPRESS, help="Show this help message and exit"
+    )
+
+    parser.add_argument(
+        "-c",
+        "--cache",
+        action="store_true",
+        help="Reuse cached layers to optimize the time and resources needed to build the image.",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--pull",
+        action="store_true",
+        help=(
+            "Checks if a newer version of the base image is available in the proper registry (e.g., Docker Hub).\n"
+            "If a newer version is found, it downloads and uses it. If the latest version is already available\n"
+            "locally it will not download it again. Without --pull Docker uses the local copy of the base image\n"
+            "if it is available on the system. If no local copy exists, Docker will download it automatically.\n"
+            "Usage of --pull is recommended to ensure an updated base image is used."
+        ),
+    )
+
+    parser.add_argument(
+        "-b",
+        "--base-img",
+        type=str,
+        default="{{ base_img }}",
+        help=("Base image. Default is '{{ base_img }}'"),
+    )
+
+    parser.add_argument(
+        "-i",
+        "--img-id",
+        type=str,
+        default="{{ img_id }}",
+        help=("Image ID for the resulting Docker image. Default is '{{ img_id }}'"),
+    )
+
+    parser.add_argument(
+        "-N",
+        "--use-nvidia-support",
+        action="store_true",
+        help="Image will use NVIDIA runtime. No MESA libraries will be installed in the image.",
+    )
+
+    parser.add_argument(
+        "-u",
+        "--img-user",
+        type=str,
+        default="{{ img_user }}",
+        help=("User to run containers for the resulting Docker image. Default is '{{ img_user }}'."),
+    )
+
+    parser.add_argument("--no-import-deps", action="store_true", help=("Do not import dependencies from deps.repos."))
+
+    parser.add_argument(
+        "--meta-title",
+        type=str,
+        default="Docker image with ROS{{ ros_version }}-{{ ros_distro }}",
+        help='Title to include in the image\'s metadata (e.g "App")',
+    )
+
+    parser.add_argument("--meta-authors", type=str, default=getpass.getuser(), help="Authors of the image")
+
+    parser.add_argument(
+        "--meta-desc",
+        type=str,
+        default="Docker image for development and testing",
+        help="Description to include in the image's metadata",
+    )
+
+    args = parser.parse_args()
+    base_img = args.base_img.strip()
+    img_id_to_build = args.img_id.strip()
+    requested_user = args.img_user.strip()
+    args.meta_title = args.meta_title.strip()
+    args.meta_desc = args.meta_desc.strip()
+    args.meta_authors = args.meta_authors.strip()
+
+    if not is_valid_docker_img_name(args.base_img):
+        print(f"Error: Invalid Docker base image name: '{base_img}'", file=sys.stderr)
+        sys.exit(1)
+
+    if not is_valid_docker_img_name(img_id_to_build):
+        print(f"Error: Invalid Docker image name: '{img_id_to_build}'", file=sys.stderr)
+        sys.exit(1)
+
+    if " " in requested_user:
+        print(f"Error: Invalid user argument '{requested_user}'", file=sys.stderr)
+        sys.exit(1)
+
+    docker_dir = {{docker_dir}}
+    dockerfile = docker_dir.joinpath("Dockerfile")
+
+    if not dockerfile.is_file():
+        print(f"Error: File '{dockerfile.resolve()}' is required")
+        sys.exit(1)
+
+    context_dir = {{context_dir}}
+
+    if not context_dir.exists():
+        print(f"Error: Directory '{context_dir}' does not exist")
+        sys.exit(1)
+    elif not os.path.isdir(context_dir):
+        print(f"Error: Path '{context_dir}' is not a directory")
+        sys.exit(1)
+
+    src_dockerignore = docker_dir.joinpath("dockerignore")
+    src_dockerignore_exists = src_dockerignore.is_file()
+
+    # The build process requires the .dockerignore file to be in the root of the context path.
+    dst_dockerignore = context_dir.joinpath(".dockerignore")
+    dst_dockerignore_exists = dst_dockerignore.is_file()
+
+    dockerignore_copied = False
+    docker_ignore_msg = None
+
+    if dst_dockerignore_exists:
+        docker_ignore_msg = f"The build process will use the dockerignore file '{dst_dockerignore.resolve()}'"
+    elif src_dockerignore_exists:
+        try:
+            shutil.copy(src_dockerignore, dst_dockerignore)
+            dockerignore_copied = True
+            docker_ignore_msg = f"The build process will use the dockerignore file '{src_dockerignore.resolve()}'"
+        except Exception as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+    else:
+        docker_ignore_msg = "The build process will not use a .dockerignore file"
+
+    # We want to use volume mount during build, which will look like this:
+    # RUN --mount=type=bind,source=...,target=... && <command>
+    # This requires the use of BuildKit (https://docs.docker.com/build/buildkit/), which is default
+    # build behavior for newer Docker clients, and includes improved build functionality.
+    # However, docker-py doesn't support BuildKit, and has an issue open for almost 6 years
+    # (https://github.com/docker/docker-py/issues/2230) so it doesn't seem like it is being added.
+    # Therefore, we use the subprocess module to call docker build... so that we can enable
+    # BuildKit, and thus mount volume during build.
+
+    creation_time = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+
+    # Enables Docker BuildKit for advanced build features.
+    os.environ["DOCKER_BUILDKIT"] = "1"
+
+    cmd = [
+        "docker",
+        "build",
+        "--file",
+        str(dockerfile.resolve()),
+        "--progress=plain",
+    ]
+
+    if not args.pull and not img_exists_locally(base_img):
+        print(f"Base image '{base_img}' not found locally. Docker build will attempt to pull it")
+    elif args.pull:
+        print(f"--pull specified. Docker build will attempt to pull/update base image '{base_img}'")
+        cmd.append("--pull")
+    else:  # Not args.pull and image exists locally
+        print(f"Using local base image '{base_img}'")
+
+    if not args.cache:
+        cmd.append("--no-cache")
+
+    build_args = {
+        "BASE_IMG": base_img,
+        "REQUESTED_USER": requested_user,
+        "ROS_DISTRO": "{{ros_distro}}",
+        "ROS_VERSION": "{{ros_version}}",
+        # "USE_NVIDIA_SUPPORT": str(args.use_nvidia_support).lower(),
+    }
+
+    for k, v in build_args.items():
+        cmd += ["--build-arg", f"{k}={v}"]
+
+    labels = {
+        "org.opencontainers.image.created": datetime.now(timezone.utc).isoformat(),
+        "org.opencontainers.image.title": args.meta_title,
+        "org.opencontainers.image.authors": args.meta_authors,
+        "org.opencontainers.image.description": args.meta_desc,
+    }
+
+    for k, v in labels.items():
+        cmd += ["--label", f"{k}={v}"]
+
+    cmd.extend(["--tag", img_id_to_build])
+    cmd.append(str(context_dir.resolve()))
+
+    log_dir = Path("/tmp")
+    img_id_sanitized = img_id_to_build.replace(":", "_").replace("/", "_")
+    timestamp_log = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    log_prefix = f"build_img_{img_id_sanitized}_{timestamp_log}"
+    complete_log_file = log_dir.joinpath(f"{log_prefix}_complete.log")
+    specific_log_file = log_dir.joinpath(f"{log_prefix}_specific.log")
+
+    print(
+        f"Building the Docker image '{args.img_id}' for the project '{{ project_id }}', using base image '{args.base_img}', with active user '{args.img_user}' and the fixed ROS{{ ros_version }} distro '{{ ros_distro }}'"
+    )
+    print(f"{docker_ignore_msg}\n")
+
+    # The script exposes to the user the option --no-import-deps to skip the import of dependencies, assuming that
+    # most of the time the user will want to import them, and only a few times will want to skip them, so by providing
+    # the option --no-import-deps we can save time to the user.
+    import_deps = not args.no_import_deps
+
+    if import_deps:
+        print("Importing packages from file 'deps.repos'")
+        try:
+            import_dependencies(context_dir, complete_log_file)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+    print("Executing command:")
+    print(" ".join(cmd))
+
+    exit_code = 0
+
+    try:
+        with subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # Combine stdout and stderr
+            text=True,  # Decode directly to strings
+            bufsize=1,  # Enable line buffering for real-time output
+        ) as process, open(complete_log_file, "w") as full_log:
+
+            # Read each line of the subprocess's output as it is produced, i.e., in real-time.
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                full_log.write(line)  # Full log
+
+            # Ensure the log file is flushed to disk.
+            full_log.flush()
+            # Wait for the process to finish and check the exit code
+            process.wait()
+            exit_code = process.returncode
+
+            if exit_code == 0:
+                print(f"\nDocker build process ended with SUCCESS for the image '{img_id_to_build}'")
+            else:
+                print(
+                    f"\nDocker build process ended with FAILURE (exit code {exit_code}) for the image '{img_id_to_build}': {process.stderr.strip()}"
+                )
+
+            if complete_log_file.exists():
+                if complete_log_file.stat().st_size > 0:
+                    print(f"Log file '{complete_log_file}' is ready")
+
+                    # Extract, from the complete log, those lines that match the pattern 'specific_log_pattern'.
+                    specific_log_pattern = re.compile(r"(\[\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\])")
+                    matches = 0
+
+                    with complete_log_file.open("r") as fin, specific_log_file.open("w") as fout:
+                        for line in fin:
+                            if specific_log_pattern.search(line):
+                                fout.write(line)
+                                matches += 1
+
+                    if matches == 0:
+                        print("No matching specific log lines found.")
+                        try:
+                            specific_log_file.unlink()
+                        except OSError as e:
+                            print(f"Error: Could not remove log file: {e}", file=sys.stderr)
+                    else:
+                        print(f"Specific log file '{specific_log_file}' is ready.")
+                else:
+                    try:
+                        complete_log_file.unlink(missing_ok=True)
+                    except OSError as e:
+                        print(f"Error: Could not remove log file: {e}", file=sys.stderr)
+            else:
+                print(f"Log file '{complete_log_file}' does not exist.")
+    except KeyboardInterrupt:
+        print("Aborted by user (Ctrl-C)")
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        if dockerignore_copied:
+            try:
+                dst_dockerignore.unlink(missing_ok=True)
+            except OSError as e:
+                print(f"Error: {e}")
+                # If exit_code is already set to a non-zero value, we don't want to override it.
+                # Otherwise, we set it to 1 to indicate an error.
+                exit_code = exit_code if exit_code != 0 else 1
+
+        sys.exit(exit_code)

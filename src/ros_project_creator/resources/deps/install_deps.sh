@@ -17,8 +17,8 @@ install_packages() {
     fi
 
     if [ "${sim_rc}" -eq 0 ]; then
-        valid_packages=("${packages[@]}")
-    else
+        valid_packages=("${packages[@]}") # All packages are valid, install all of them
+    else                                  # exit_code is 100, which means some packages are not installable
         mapfile -t bad_packages < <(
             grep -oP 'Unable to locate package \K\S+' <<<"${sim_out}"
         )
@@ -83,7 +83,12 @@ apt-get install --yes --no-install-recommends curl gpg
 # NECESSARY AND CANNOT BE RESOLVED VIA rosdep. IMPROPER USE OF THIS SCRIPT FOR
 # SYSTEM PACKAGE INSTALLATION MAY LEAD TO INCONSISTENCIES IN DEPENDENCY RESOLUTION.
 
-# install_packages "pkg1" "pkg2" "pkg3"
+#packages=(
+# pkg1
+# pkg2
+# pkg3
+#)
+# install_packages "${packages[@]}"
 
 # + ---------------------+
 # | Install ROS packages |

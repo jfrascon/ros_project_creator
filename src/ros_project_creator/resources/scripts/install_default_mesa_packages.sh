@@ -41,5 +41,7 @@ for pkg in "${packages[@]}"; do
     log "    Candidate: ${candidate}"
 done
 
-log "Installing Mesa packages from system repositories (no PPA)"
+log "Installing Mesa packages from default system repositories"
+log "Packages to install: ${packages[*]}" 1
+
 apt-get install --yes --no-install-recommends "${packages[@]}"

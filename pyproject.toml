@@ -1,13 +1,13 @@
 [project]
 name = "ros_project_creator"
 version = "1.0.0"
-description = "A tool for generating ROS projects in Eurecat."
+description = "A tool for generating ROS projects with automation and DevOps practices"
 readme = "README.md"
 authors = [
-    { name = "Juan Francisco Rascon", email = "juan.rascon@eurecat.org" },
+    { name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" },
 ]
 maintainers = [
-    { name = "Juan Francisco Rascon", email = "juan.rascon@eurecat.org" },
+    { name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" },
 ]
 license = { text = "MIT" }
 requires-python = ">=3.6"
