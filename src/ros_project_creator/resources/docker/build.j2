@@ -145,9 +145,9 @@ if __name__ == "__main__":
     ) -> subprocess.CompletedProcess:
         return subprocess.run(cmd, check=check, text=True, capture_output=capture, cwd=cwd)
 
-    # ==============================================================================================
+    # ----------------------------------------------------------------------------------------------
     # Main execution block
-    # ==============================================================================================
+    # ----------------------------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser(
         description="{{ description }}",
@@ -180,37 +180,6 @@ if __name__ == "__main__":
         ),
     )
 
-    parser.add_argument(
-        "-b",
-        "--base-img",
-        type=str,
-        default="{{ base_img }}",
-        help=("Base image. Default is '{{ base_img }}'"),
-    )
-
-    parser.add_argument(
-        "-i",
-        "--img-id",
-        type=str,
-        default="{{ img_id }}",
-        help=("Image ID for the resulting Docker image. Default is '{{ img_id }}'"),
-    )
-
-    parser.add_argument(
-        "-N",
-        "--use-nvidia-support",
-        action="store_true",
-        help="Image will use NVIDIA runtime. No MESA libraries will be installed in the image.",
-    )
-
-    parser.add_argument(
-        "-u",
-        "--img-user",
-        type=str,
-        default="{{ img_user }}",
-        help=("User to run containers for the resulting Docker image. Default is '{{ img_user }}'."),
-    )
-
     parser.add_argument("--no-import-deps", action="store_true", help=("Do not import dependencies from deps.repos."))
 
     parser.add_argument(
@@ -220,8 +189,6 @@ if __name__ == "__main__":
         help='Title to include in the image\'s metadata (e.g "App")',
     )
 
-    parser.add_argument("--meta-authors", type=str, default=getpass.getuser(), help="Authors of the image")
-
     parser.add_argument(
         "--meta-desc",
         type=str,
@@ -229,15 +196,18 @@ if __name__ == "__main__":
         help="Description to include in the image's metadata",
     )
 
+    parser.add_argument("--meta-authors", type=str, default=getpass.getuser(), help="Authors of the image")
+
     args = parser.parse_args()
-    base_img = args.base_img.strip()
-    img_id_to_build = args.img_id.strip()
-    requested_user = args.img_user.strip()
     args.meta_title = args.meta_title.strip()
     args.meta_desc = args.meta_desc.strip()
     args.meta_authors = args.meta_authors.strip()
 
-    if not is_valid_docker_img_name(args.base_img):
+    base_img = "{{ base_img }}"
+    img_id_to_build = "{{ img_id }}"
+    requested_user = "{{ img_user }}"
+
+    if not is_valid_docker_img_name(base_img):
         print(f"Error: Invalid Docker base image name: '{base_img}'", file=sys.stderr)
         sys.exit(1)
 
@@ -324,9 +294,8 @@ if __name__ == "__main__":
     build_args = {
         "BASE_IMG": base_img,
         "REQUESTED_USER": requested_user,
-        "ROS_DISTRO": "{{ros_distro}}",
-        "ROS_VERSION": "{{ros_version}}",
-        # "USE_NVIDIA_SUPPORT": str(args.use_nvidia_support).lower(),
+        "ROS_DISTRO": "{{ ros_distro }}",
+        "ROS_VERSION": "{{ ros_version }}",
     }
 
     for k, v in build_args.items():
@@ -335,8 +304,8 @@ if __name__ == "__main__":
     labels = {
         "org.opencontainers.image.created": datetime.now(timezone.utc).isoformat(),
         "org.opencontainers.image.title": args.meta_title,
-        "org.opencontainers.image.authors": args.meta_authors,
         "org.opencontainers.image.description": args.meta_desc,
+        "org.opencontainers.image.authors": args.meta_authors,
     }
 
     for k, v in labels.items():
@@ -353,7 +322,7 @@ if __name__ == "__main__":
     specific_log_file = log_dir.joinpath(f"{log_prefix}_specific.log")
 
     print(
-        f"Building the Docker image '{args.img_id}' for the project '{{ project_id }}', using base image '{args.base_img}', with active user '{args.img_user}' and the fixed ROS{{ ros_version }} distro '{{ ros_distro }}'"
+        f"Building the Docker image '{img_id_to_build}' for the project '{{ project_id }}', using the base image '{base_img}', with active user '{requested_user}' and ROS{{ ros_version }}-'{{ ros_distro }}'"
     )
     print(f"{docker_ignore_msg}\n")
 

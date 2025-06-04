@@ -93,31 +93,11 @@ log() {
     printf "[%s] %s\n" "$(date --utc '+%Y-%m-%d_%H-%M-%S')" "${message}" >&"${fd}"
 }
 
-should_install_mesa() {
-    if [ "${USE_NVIDIA_SUPPORT}" = "true" ]; then
-        log "USE_NVIDIA_SUPPORT was explicitly set"
-        return 1
-    fi
-
-    log "USE_NVIDIA_SUPPORT was not set, checking for NVIDIA libraries"
-
-    if detect_nvidia_libraries; then
-        log "Warning: NVIDIA libraries detected"
-        log "Assuming NVIDIA runtime will be used"
-        return 1
-    fi
-
-    return 0
-}
-
 #-----------------------------------------------------------------------------------------------------------------------
 # Start execution of the script
 #-----------------------------------------------------------------------------------------------------------------------
 # Requested user to be created in the image.
 REQUESTED_USER="${1}"
-USE_NVIDIA_SUPPORT="${2:-false}"
-INSTALL_MESA_PACKAGES_SCRIPT="${3}"
-
 requested_user_shell="/bin/bash"
 
 if [ -z "${REQUESTED_USER}" ]; then
@@ -238,16 +218,6 @@ packages=(
 )
 
 install_packages "${packages[@]}"
-
-if should_install_mesa; then
-    if [ -s "${INSTALL_MESA_PACKAGES_SCRIPT}" ]; then
-        bash "${INSTALL_MESA_PACKAGES_SCRIPT}"
-    else
-        log "Warning: File '${INSTALL_MESA_PACKAGES_SCRIPT}' not found or empty! Skipping installation of Mesa packages"
-    fi
-else
-    log "Installation of Mesa packages skipped"
-fi
 
 # Since Ubuntu 18.04 onwards, python3 is the default python command.
 update-alternatives --install /usr/bin/python python /usr/bin/python3 100

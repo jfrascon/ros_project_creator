@@ -16,7 +16,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG REQUESTED_USER=non_root
 ARG ROS_DISTRO=humble
 ARG ROS_VERSION=2
-ARG USE_NVIDIA_SUPPORT=false
 
 USER root
 WORKDIR /
@@ -24,8 +23,8 @@ WORKDIR /
 # Using the pattern COPY+RUN we can benefit from Docker's build cache.
 # The copied files are lightweight, therefore the size of the associated layer is small.
 # The script install_core.sh is responsible for installing system dependencies.
-COPY --chmod=775 docker/.resources/install_base_system.sh docker/.resources/install_mesa_packages.sh /tmp/
-RUN /tmp/install_base_system.sh "${REQUESTED_USER}" "${USE_NVIDIA_SUPPORT}" /tmp/install_mesa_packages.sh && rm -rf /tmp/install_base_system.sh && rm -rf /tmp/install_mesa_packages.sh
+COPY --chmod=775 docker/.resources/install_base_system.sh /tmp/
+RUN /tmp/install_base_system.sh "${REQUESTED_USER}" && rm -rf /tmp/install_base_system.sh
 
 COPY --chmod=775 docker/.resources/install_ros.sh /tmp/install_ros.sh
 RUN /tmp/install_ros.sh "${ROS_DISTRO}" "${ROS_VERSION}" "${REQUESTED_USER}" && rm -rf /tmp/install_ros.sh
@@ -156,7 +155,6 @@ EOF
 # This is required even if they were already defined earlier after the FROM.
 ARG DEBIAN_FRONTEND
 ARG REQUESTED_USER
-ARG USE_NVIDIA_SUPPORT
 
 # Configure timezone and localization settings.
 # - TZ: Set the timezone to UTC to ensure consistent time handling across environments.
@@ -167,8 +165,7 @@ ENV IMG_USER="${REQUESTED_USER}" \
     LC_ALL="en_US.UTF-8" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US:en" \
-    DEBIAN_FRONTEND="${DEBIAN_FRONTEND}" \
-    USE_NVIDIA_SUPPORT="${USE_NVIDIA_SUPPORT}"
+    DEBIAN_FRONTEND="${DEBIAN_FRONTEND}"
 
 USER "${IMG_USER}"
 WORKDIR "/"

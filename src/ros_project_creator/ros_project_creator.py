@@ -185,7 +185,6 @@ class RosProjectCreator:
                 "deps.repos": ("deps/deps.repos", None, 0o664),
                 "docker/.resources/deduplicate_path.sh": ("scripts/deduplicate_path.sh", None, 0o775),
                 "docker/.resources/dot_bash_aliases.sh": ("scripts/dot_bash_aliases", None, 0o775),
-                "docker/.resources/install_mesa_packages.sh": ("scripts/install_default_mesa_packages.sh", None, 0o775),
                 "docker/.resources/install_base_system.sh": (
                     "scripts/install_base_system.sh",
                     None,
@@ -197,7 +196,7 @@ class RosProjectCreator:
                 "docker/build.py": (
                     "docker/build.j2",
                     {
-                        "description": f"Builds the Docker image for the project '{self._project_id}', with default id '{img_id}', using the default base image '{base_img}', with default active user '{img_user}' and the fixed ROS{ros_variant.get_version()} distro '{ros_variant.get_distro()}'",
+                        "description": f"Builds the Docker image '{img_id}' for the project '{self._project_id}', using the base image '{base_img}', with active user '{img_user}' and ROS{ros_variant.get_version()}-'{ros_variant.get_distro()}'",
                         "base_img": base_img,
                         "img_user": img_user,
                         "img_id": img_id,
