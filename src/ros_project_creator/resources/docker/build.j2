@@ -322,7 +322,7 @@ if __name__ == "__main__":
     specific_log_file = log_dir.joinpath(f"{log_prefix}_specific.log")
 
     print(
-        f"Building the Docker image '{img_id_to_build}' for the project '{{ project_id }}', using the base image '{base_img}', with active user '{requested_user}' and ROS{{ ros_version }}-'{{ ros_distro }}'"
+        f"Building the Docker image '{img_id_to_build}' for the project '{{ project_id }}', using the base image '{base_img}', with active user '{requested_user}' and 'ROS{{ ros_version }}-{{ ros_distro }}'"
     )
     print(f"{docker_ignore_msg}\n")
 
