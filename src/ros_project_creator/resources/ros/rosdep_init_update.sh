@@ -109,7 +109,7 @@ for item in "${items[@]}"; do
 
     if [ -e "${src_item}" ]; then
         bak_item="${src_item}.bak_$(date --utc '+%Y-%m-%d_%H-%M-%S')"
-        log "Baking up item '${bak_item}'"
+        log "Backing up item '${src_item}' to '${bak_item}'"
         mv --verbose "${src_item}" "${bak_item}"
     fi
 done
@@ -139,7 +139,7 @@ if [ "${IMG_USER}" != "root" ]; then
 
         if [ -e "${dst_item}" ]; then
             bak_item="${dst_item}.bak_$(date --utc '+%Y-%m-%d_%H-%M-%S')"
-            log "Baking up item '${bak_item}'"
+            log "Backing up item '${dst_item}' to '${bak_item}'"
             sudo -H -u "${IMG_USER}" mv --verbose "${dst_item}" "${bak_item}"
         fi
 
