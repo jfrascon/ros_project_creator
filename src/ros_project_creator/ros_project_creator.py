@@ -196,7 +196,7 @@ class RosProjectCreator:
                 "docker/build.py": (
                     "docker/build.j2",
                     {
-                        "description": f"Builds the Docker image '{img_id}' for the project '{self._project_id}', using the base image '{base_img}', with active user '{img_user}' and ROS{ros_variant.get_version()}-'{ros_variant.get_distro()}'",
+                        "description": f"Builds the Docker image '{img_id}' for the project '{self._project_id}', using the base image '{base_img}', with active user '{img_user}' and 'ROS{ros_variant.get_version()}-{ros_variant.get_distro()}'",
                         "base_img": base_img,
                         "img_user": img_user,
                         "img_id": img_id,

@@ -45,6 +45,7 @@ install_packages() {
     local bad_packages=()
     local pkg
 
+    apt-get update # Ensure the package index is up to date before simulating installation
     sim_out="$(apt-get --simulate --quiet --quiet --no-install-recommends -o Dpkg::Use-Pty=0 install "${packages[@]}" 2>&1)"
     sim_rc=$?
 
@@ -122,7 +123,7 @@ apt-get update
 
 # Install the apt-utils package first, to avoid warnings when installing packages if this package
 # is not installed previously.
-apt-get install --yes --no-install-recommends "apt-utils"
+apt-get install --yes --no-install-recommends apt-utils
 
 # Upgrade the system to ensure all packages are up to date, now that apt-utils is installed.
 apt-get dist-upgrade --yes

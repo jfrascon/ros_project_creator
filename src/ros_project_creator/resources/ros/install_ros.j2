@@ -2,7 +2,7 @@
 
 # set -e
 
-{% raw %}
+{% raw -%}
 install_packages() {
     local packages=("$@")
     local sim_out
@@ -11,6 +11,7 @@ install_packages() {
     local bad_packages=()
     local pkg
 
+    apt-get update # Ensure the package list is up to date before simulating installation
     sim_out="$(apt-get --simulate --quiet --quiet --no-install-recommends -o Dpkg::Use-Pty=0 install "${packages[@]}" 2>&1)"
     sim_rc=$?
 
@@ -60,15 +61,65 @@ log() {
     printf "[%s] %s\n" "$(date --utc '+%Y-%m-%d_%H-%M-%S')" "${message}" >&"${fd}"
 }
 
-# This script is run by root when building the Docker image.
-[ "$(id --user)" -ne 0 ] && {
-    log "Error: root user must be active to run the script '$(basename "${BASH_SOURCE[0]}")'" 2
-    exit 1
+remove_gpg_key_file() {
+    local file="${1}"
+    local deb_pattern="${2}"
+
+    # Extracts the path after 'signed-by=' from lines matching the given APT deb_pattern.
+    # - First grep filters lines matching deb_pattern
+    # - Second grep extracts the value after signed-by=, excluding any trailing bracket or space
+    # - Each resulting path is removed if it exists
+
+    grep --extended-regexp "${deb_pattern}" "${file}" |
+        grep --only-matching --perl-regexp 'signed-by=\K[^] ]+' |
+        while IFS= read -r signed_by_path; do
+            if [ -f "${signed_by_path}" ]; then
+                log "Removing GPG key file '${signed_by_path}'"
+                rm --force "${signed_by_path}"
+            fi
+        done
 }
+
+sanitize() {
+    local ros_version_str="${1}"
+    local url="http://packages.ros.org/${ros_version_str}/ubuntu"
+    local version_codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
+    local ros_deb_pattern="^deb.*${url}[[:space:]]+${version_codename}[[:space:]]+main"
+
+    # Search for any '.list' file containing a deb line with a ROS url.
+    matched_files="$(find /etc/apt/ -type f -name '*.list' -exec grep --files-with-matches --extended-regexp "${ros_deb_pattern}" {} + 2>/dev/null)"
+
+    # Iterate over the matched files and remove the GPG key file if it exists, and then remove the line
+    # or the file.
+    for matched_file in ${matched_files}; do
+        if [ "${matched_file}" = "/etc/apt/sources.list" ]; then
+            remove_gpg_key_file "${matched_file}" "${ros_deb_pattern}"
+            log "ROS deb line found in the file '${matched_file}', removing matching lines"
+            # Remove the line from the sources.list file.
+            sed --in-place --regexp-extended "\#${ros_deb_pattern}#d" "${matched_file}"
+        else
+            remove_gpg_key_file "${matched_file}" "${ros_deb_pattern}"
+            # Remove the file from sources.list.d.
+            log "ROS deb line found in the file '${matched_file}', removing file"
+            rm --force "${matched_file}"
+        fi
+    done
+}
+
+# --------------------------------------------------------------------------------------------------
+# Start of the script
+# --------------------------------------------------------------------------------------------------
 
 ROS_DISTRO="${1}"
 ROS_VERSION="${2}"
 IMG_USER="${3}"
+ros_versions_str=("ros" "ros2")
+
+# THIS SCRIPT IS RUN BY ROOT WHEN BUILDING THE DOCKER IMAGE.
+[ "$(id --user)" -ne 0 ] && {
+    log "Error: root user must be active to run the script '$(basename "${BASH_SOURCE[0]}")'" 2
+    exit 1
+}
 
 [ -z "${ROS_DISTRO}" ] && {
     log "Error: No ROS_DISTRO provided" 2
@@ -90,6 +141,8 @@ fi
     exit 1
 }
 
+ros_version_str="${ros_versions_str[$((ROS_VERSION - 1))]}"
+ros_apt_source_package="${ros_version_str}-apt-source"
 img_user_home="$(getent passwd "${IMG_USER}" | cut -d: -f6)"
 
 [ -z "${img_user_home}" ] && {
@@ -110,8 +163,50 @@ if [ "${num_distros}" -gt 1 ]; then
     exit 1
 fi
 
-# If no ROS distro is installed, we proceed to add the ROS repository.
-if [ "${num_distros}" -eq 0 ]; then
+if [ "${num_distros}" -eq 1 ] && [ "${ROS_DISTRO}" != "${ros_distro}" ]; then
+    log "Error: Found ROS '${ros_distro}' installed, but ROS '${ROS_DISTRO}' was requested to install" 2
+    exit 1
+fi
+
+# If the execution reaches this point, either num_distros is 0, no ROS distro installed, or it is 1
+# and the requested ROS distro is already installed.
+
+# On the 1st of June 2025, the way to manage ROS gpg keys and sources changed. A new package for ROS
+# key and repository management was introduced, called 'ros-apt-source', for ros1, and
+#'ros2-apt-source', for ros2.
+# Ref: https://discourse.ros.org/t/ros-signing-key-migration-guide/43937
+# "This a big step towards a simpler key update path allowing the ROS project to rotate keys while keeping ROS users in
+# sync as long as the they keep their system up to date!"
+
+# We will remove any '.list' file containing the old 'deb lines' used to manage ROS repositories,
+# which are no longer encouraged to use.
+# The gpg files associated to these 'deb lines' will also be removed.
+sanitize "${ros_version_str}"
+
+# ROS packages to install.
+packages=(
+    {{ ros_packages }}
+)
+
+apt-get update # Required to load the cache in the build container
+# Install the apt-utils package first, to avoid warnings when installing packages if this package
+# is not installed previously.
+apt-get install --yes --no-install-recommends apt-utils
+# Install the software-properties-common package, which provides the add-apt-repository command.
+apt-get install --yes --no-install-recommends software-properties-common
+# Now add-apt-repository is available, and we can add the universe repository that contains many
+# of the packages we need. Next, the index is updated, and the system is upgraded to ensure all packages are up to date.
+add-apt-repository --yes universe
+apt-get update
+apt-get install --yes --no-install-recommends curl gpg
+apt-get dist-upgrade --yes
+
+ros_list_file=""
+
+# Check if the '${ros-apt-source package}' is installed.
+if ! dpkg --status "${ros_apt_source_package}" >/dev/null 2>&1; then
+    # ${ros_apt_source_package} is not installed.
+
     gpg_dir="/etc/apt/keyrings"
     gpg_file="${gpg_dir}/ros.gpg"
 
@@ -121,50 +216,32 @@ if [ "${num_distros}" -eq 0 ]; then
     fi
 
     log "Adding ROS GPG key to file '${gpg_file}'"
-    curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | gpg --dearmor --output - | tee "${gpg_file}" >/dev/null
+    curl --fail --silent --show-error --location https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc |
+        gpg --dearmor --output "${gpg_file}"
 
     # Set correct permissions
     chmod 644 "${gpg_file}"
-    chown root:root "${gpg_file}"
 
-    # Get relevant environment variables, included VERSION_CODENAME.
-    . /etc/os-release
+    version_codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
+    url="http://packages.ros.org/${ros_version_str}/ubuntu"
+    ros_deb_line="deb [arch=$(dpkg --print-architecture) signed-by=${gpg_file}] ${url} ${version_codename} main"
+    ros_list_file="/etc/apt/sources.list.d/ros.list"
 
-    if [ "${ROS_VERSION}" = "1" ]; then
-        url="http://packages.ros.org/ros/ubuntu"
-    else
-        url="http://packages.ros.org/ros2/ubuntu"
-    fi
+    log "Adding custom ROS deb line to file '${ros_list_file}'"
+    echo "${ros_deb_line}" | tee "${ros_list_file}" >/dev/null
 
-    deb_line="deb [arch=$(dpkg --print-architecture) signed-by=${gpg_file}] ${url} ${VERSION_CODENAME} main"
-    list_file="/etc/apt/sources.list.d/ros.list"
-
-    log "Adding custom ROS deb line to file '${list_file}'"
-    echo "${deb_line}" | tee "${list_file}" >/dev/null
-# Check if the installed ROS distro matches the requested one. If not, exit with an error.
-elif [ "${ROS_DISTRO}" != "${ros_distro}" ]; then
-    log "Error: Found ROS '${ros_distro}' installed, but ROS '${ROS_DISTRO}' was requested to install" 2
-    exit 1
+    packages+=("${ros_apt_source_package}")
 fi
 
-apt-get update # Required to load the cache in the build container
-apt-get install --yes --no-install-recommends python3-software-properties software-properties-common
-apt-get -f install --yes
-dpkg --configure -a
-
-# Now add-apt-repository is available, and we can add the universe repository that contains many
-# of the packages we need. Next, the index is updated, and the system is upgraded to ensure all packages are up to date.
-add-apt-repository --yes universe
-apt-get update
-apt-get install --yes --no-install-recommends curl gpg
-apt-get dist-upgrade --yes
-
-# Install the ROS packages.
-packages=(
-    {{ ros_packages }}
-)
-
 install_packages "${packages[@]}"
+
+# If the file '${ros_list_file}' was created, it means that the ROS list file and the associated GPG
+# file were created, and the package '${ros_apt_source_package}' was installed.
+# If this is the case, we will remove the file and the GPG key file.
+if [ -n "${ros_list_file}" ]; then
+    rm -f "${ros_list_file}"
+    rm -f "${gpg_file}"
+fi
 
 log "Removing installation residues from apt cache"
 apt-get autoclean
