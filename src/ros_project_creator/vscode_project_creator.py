@@ -112,90 +112,90 @@ class VscodeProjectCreator:
                 build_relwithdebinfo_cmd = "rosbuild.sh --mixin rel-with-deb-info"
                 clean_cmd = "colcon clean workspace -y"
 
-                service = "devcont"
+            service = "devcont"
 
-                items_to_process = {
-                    ".devcontainer/devcontainer.json": (
-                        "vscode/dot_devcontainer.j2",
-                        {"service": service, "img_user": img_user, "img_workspace_dir": img_workspace_dir},
-                        0o664,
-                    ),
-                    ".devcontainer/docker-compose.yaml": (
-                        "docker/docker-compose.j2",
-                        {
-                            "service": service,
-                            "img_id": img_id,
-                            "workspace_dir": workspace_dir.resolve(),
-                            "img_workspace_dir": img_workspace_dir.resolve(),
-                            "img_datasets_dir": img_user_home.joinpath("datasets"),
-                            "img_ssh_dir": img_user_home.joinpath(".ssh"),
-                            "use_git": use_git,
-                            "gitconfig_file": gitconfig_file,
-                            "img_gitconfig_file": img_user_home.joinpath(".gitconfig"),
-                            "ext_uid": f"{os.getuid()}",
-                            "ext_upgid": f"{os.getgid()}",
-                        },
-                        0o775,
-                    ),
-                    ".vscode/c_cpp_properties.json": (
-                        "vscode/c_cpp_properties.j2",
-                        {
-                            "c_version": f"c{ros_variant.get_c_version()}",
-                            "cpp_version": f"c++{ros_variant.get_cpp_version()}",
-                            "ros_distro": ros_variant.get_distro(),
-                        },
-                        0o664,
-                    ),
-                    ".vscode/settings.json": ("vscode/settings.json", None, 0o775),
-                    ".vscode/tasks.json": (
-                        "vscode/tasks.j2",
-                        {
-                            "build_command_for_release": build_release_cmd,
-                            "build_command_for_debug": build_debug_cmd,
-                            "build_command_for_relwithdebinfo": build_relwithdebinfo_cmd,
-                            "clean_command": clean_cmd,
-                        },
-                        0o775,
-                    ),
-                    "ws.code-workspace": ("vscode/ws.j2", {"ros_distro": ros_variant.get_distro()}, 0o664),
-                }
+            items_to_process = {
+                ".devcontainer/devcontainer.json": (
+                    "vscode/dot_devcontainer.j2",
+                    {"service": service, "img_user": img_user, "img_workspace_dir": img_workspace_dir},
+                    0o664,
+                ),
+                ".devcontainer/docker-compose.yaml": (
+                    "docker/docker-compose.j2",
+                    {
+                        "service": service,
+                        "img_id": img_id,
+                        "workspace_dir": workspace_dir.resolve(),
+                        "img_workspace_dir": img_workspace_dir.resolve(),
+                        "img_datasets_dir": img_user_home.joinpath("datasets"),
+                        "img_ssh_dir": img_user_home.joinpath(".ssh"),
+                        "use_git": use_git,
+                        "gitconfig_file": gitconfig_file,
+                        "img_gitconfig_file": img_user_home.joinpath(".gitconfig"),
+                        "ext_uid": f"{os.getuid()}",
+                        "ext_upgid": f"{os.getgid()}",
+                    },
+                    0o775,
+                ),
+                ".vscode/c_cpp_properties.json": (
+                    "vscode/c_cpp_properties.j2",
+                    {
+                        "c_version": f"c{ros_variant.get_c_version()}",
+                        "cpp_version": f"c++{ros_variant.get_cpp_version()}",
+                        "ros_distro": ros_variant.get_distro(),
+                    },
+                    0o664,
+                ),
+                ".vscode/settings.json": ("vscode/settings.json", None, 0o775),
+                ".vscode/tasks.json": (
+                    "vscode/tasks.j2",
+                    {
+                        "build_command_for_release": build_release_cmd,
+                        "build_command_for_debug": build_debug_cmd,
+                        "build_command_for_relwithdebinfo": build_relwithdebinfo_cmd,
+                        "clean_command": clean_cmd,
+                    },
+                    0o775,
+                ),
+                "ws.code-workspace": ("vscode/ws.j2", {"ros_distro": ros_variant.get_distro()}, 0o664),
+            }
 
-            for key in sorted(items_to_process.keys()):
-                item = items_to_process[key]
+        for key in sorted(items_to_process.keys()):
+            item = items_to_process[key]
 
-                dst_item = workspace_dir.joinpath(key).resolve()
-                src_item = resources_dir.joinpath(item[0]).resolve()
+            dst_item = workspace_dir.joinpath(key).resolve()
+            src_item = resources_dir.joinpath(item[0]).resolve()
 
-                if not src_item.exists():
-                    raise VscodeProjectCreatorException(
-                        f"Required resource '{src_item.resolve()}' does not exist. "
-                        "Please check the resources directory."
+            if not src_item.exists():
+                raise VscodeProjectCreatorException(
+                    f"Required resource '{src_item.resolve()}' does not exist. "
+                    "Please check the resources directory."
+                )
+
+            if src_item.is_dir():
+                # If the source item is a directory, copy the directory recursively.
+                self._logger.info(f"Creating directory '{dst_item}'")
+                shutil.copytree(src_item, dst_item, copy_function=shutil.copy2)
+            else:
+                # If the source item is a file, copy the file.
+                self._logger.info(f"Creating file '{dst_item.resolve()}'")
+
+                if not dst_item.parent.exists():
+                    dst_item.parent.mkdir(parents=True, mode=0o775)
+
+                if item[1] is not None:
+                    jinja2_env = Environment(
+                        loader=FileSystemLoader(src_item.parent), trim_blocks=True, lstrip_blocks=True
                     )
+                    jinja2_template = jinja2_env.get_template(src_item.name)
+                    rendered_text = jinja2_template.render(item[1])
 
-                if src_item.is_dir():
-                    # If the source item is a directory, copy the directory recursively.
-                    self._logger.info(f"Creating directory '{dst_item}'")
-                    shutil.copytree(src_item, dst_item, copy_function=shutil.copy2)
+                    with dst_item.open("w") as f:
+                        f.write(rendered_text)
                 else:
-                    # If the source item is a file, copy the file.
-                    self._logger.info(f"Creating file '{dst_item.resolve()}'")
+                    shutil.copy2(src_item, dst_item)
 
-                    if not dst_item.parent.exists():
-                        dst_item.parent.mkdir(parents=True, mode=0o775)
-
-                    if item[1] is not None:
-                        jinja2_env = Environment(
-                            loader=FileSystemLoader(src_item.parent), trim_blocks=True, lstrip_blocks=True
-                        )
-                        jinja2_template = jinja2_env.get_template(src_item.name)
-                        rendered_text = jinja2_template.render(item[1])
-
-                        with dst_item.open("w") as f:
-                            f.write(rendered_text)
-                    else:
-                        shutil.copy2(src_item, dst_item)
-
-                    dst_item.chmod(item[2])  # Set the file permissions
+                dst_item.chmod(item[2])  # Set the file permissions
 
         # trim_block removes the first newline after a block (e.g., after {% endif %}).
         # lstrip_blocks strips leading whitespace from the start of a block line.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-class DockerPlaform:
+class DockerPlatform:
     def __init__(self, id: str, architectures: list[str], description: str):
         self._id = id
         self._architectures = architectures

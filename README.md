@@ -178,7 +178,7 @@ Install the package `ros_project_creator` in a virtual environment, using the `-
 This way, any change in the source code will be reflected when executing the scripts for debugging purposes.
 
 ```sh
-git https://github.com/jfrascon/ros_project_creator.git ~/ros_project_creator
+git clone https://github.com/jfrascon/ros_project_creator.git ~/ros_project_creator
 uv venv ~/.venv
 source ~/.venv/bin/activate
 uv pip install --editable ~/ros_project_creator
