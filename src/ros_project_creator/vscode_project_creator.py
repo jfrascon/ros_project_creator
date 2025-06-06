@@ -160,42 +160,42 @@ class VscodeProjectCreator:
                 "ws.code-workspace": ("vscode/ws.j2", {"ros_distro": ros_variant.get_distro()}, 0o664),
             }
 
-        for key in sorted(items_to_process.keys()):
-            item = items_to_process[key]
+            for key in sorted(items_to_process.keys()):
+                item = items_to_process[key]
 
-            dst_item = workspace_dir.joinpath(key).resolve()
-            src_item = resources_dir.joinpath(item[0]).resolve()
+                dst_item = workspace_dir.joinpath(key).resolve()
+                src_item = resources_dir.joinpath(item[0]).resolve()
 
-            if not src_item.exists():
-                raise VscodeProjectCreatorException(
-                    f"Required resource '{src_item.resolve()}' does not exist. "
-                    "Please check the resources directory."
-                )
-
-            if src_item.is_dir():
-                # If the source item is a directory, copy the directory recursively.
-                self._logger.info(f"Creating directory '{dst_item}'")
-                shutil.copytree(src_item, dst_item, copy_function=shutil.copy2)
-            else:
-                # If the source item is a file, copy the file.
-                self._logger.info(f"Creating file '{dst_item.resolve()}'")
-
-                if not dst_item.parent.exists():
-                    dst_item.parent.mkdir(parents=True, mode=0o775)
-
-                if item[1] is not None:
-                    jinja2_env = Environment(
-                        loader=FileSystemLoader(src_item.parent), trim_blocks=True, lstrip_blocks=True
+                if not src_item.exists():
+                    raise VscodeProjectCreatorException(
+                        f"Required resource '{src_item.resolve()}' does not exist. "
+                        "Please check the resources directory."
                     )
-                    jinja2_template = jinja2_env.get_template(src_item.name)
-                    rendered_text = jinja2_template.render(item[1])
 
-                    with dst_item.open("w") as f:
-                        f.write(rendered_text)
+                if src_item.is_dir():
+                    # If the source item is a directory, copy the directory recursively.
+                    self._logger.info(f"Creating directory '{dst_item}'")
+                    shutil.copytree(src_item, dst_item, copy_function=shutil.copy2)
                 else:
-                    shutil.copy2(src_item, dst_item)
+                    # If the source item is a file, copy the file.
+                    self._logger.info(f"Creating file '{dst_item.resolve()}'")
 
-                dst_item.chmod(item[2])  # Set the file permissions
+                    if not dst_item.parent.exists():
+                        dst_item.parent.mkdir(parents=True, mode=0o775)
+
+                    if item[1] is not None:
+                        jinja2_env = Environment(
+                            loader=FileSystemLoader(src_item.parent), trim_blocks=True, lstrip_blocks=True
+                        )
+                        jinja2_template = jinja2_env.get_template(src_item.name)
+                        rendered_text = jinja2_template.render(item[1])
+
+                        with dst_item.open("w") as f:
+                            f.write(rendered_text)
+                    else:
+                        shutil.copy2(src_item, dst_item)
+
+                    dst_item.chmod(item[2])  # Set the file permissions
 
         # trim_block removes the first newline after a block (e.g., after {% endif %}).
         # lstrip_blocks strips leading whitespace from the start of a block line.
