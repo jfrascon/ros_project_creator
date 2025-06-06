@@ -59,6 +59,21 @@ def main():
             help="ID of the resulting Docker image (e.g. 'robproj:humble'). If not set, defaults to '<project-id>:latest'",
         )
 
+        entrypoint_group = parser.add_mutually_exclusive_group()
+
+        entrypoint_group.add_argument(
+            "--use-base-img-entrypoint",
+            action="store_true",
+            help="The image will inherit the base image's entrypoint, if any. Do not use this option if you set a custom entrypoint",
+        )
+
+        entrypoint_group.add_argument(
+            "--entrypoint",
+            type=str,
+            metavar="ENTRYPOINT_FILE",
+            help="Path to a custom entrypoint script to include in the Docker image (replaces the default entrypoint script)",
+        )
+
         parser.add_argument("--no-vscode", action="store_true", help="Do not create VSCode project")
 
         parser.add_argument("--no-pre-commit", action="store_true", help="Do not use pre-commit hooks")
@@ -80,13 +95,25 @@ def main():
         argcomplete.autocomplete(parser)
         args = parser.parse_args()
 
+        if args.entrypoint:
+            entrypoint = Path(args.entrypoint).expanduser().resolve()
+
+            if not entrypoint.is_file():
+                raise FileNotFoundError(
+                    f"Custom entrypoint file '{entrypoint}' does not exist or is not a regular file"
+                )
+        else:
+            entrypoint = None
+
         RosProjectCreator(
             args.project_id,
             Path(args.project_dir),
             args.ros_distro,
             args.base_img,
-            args.img_id,
             args.img_user,
+            args.img_id,
+            entrypoint,
+            args.use_base_img_entrypoint,
             not args.no_vscode,  # parameter is used_vscode_project, so it is inverted
             not args.no_pre_commit,  # parameter is used_pre_commit, so it is inverted
             not args.no_console_log,  # parameter is used_console_log, so it is inverted

@@ -44,12 +44,14 @@ img_user_entry="$(getent passwd "${img_user}")"
     exit 1
 }
 
+{%- if not use_base_img_entrypoint %}
 [ ! -f /tmp/context/docker/entrypoint.sh ] && {
     log "Error: Script entrypoint.sh not provided" >&2
     exit 1
 }
+{% endif %}
 
-[ ! -f /tmp/context/docker/environment.sh ] && {
+[ ! -f /tmp/context/docker/.resources/environment.sh ] && {
     log "Error: Script environment.sh not provided" >&2
     exit 1
 }
@@ -125,9 +127,11 @@ img_user_home="$(echo "${img_user_entry}" | cut -d: -f6)"
 log "Setting ownership of path '${img_user_home}' to user '${img_user}' (UID '${img_user_id}') and primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}')"
 chown --recursive "${img_user}":"${img_user_pri_group}" "${img_user_home}"
 
+{%- if not use_base_img_entrypoint %}
 # Install utility scripts and environment files system-wide or per-user.
 log "Installing file '/usr/local/bin/entrypoint.sh'" >&2
 install --owner root --group root --mode 775 /tmp/context/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+{% endif %}
 
 log "Installing file '/usr/local/bin/deduplicate_path.sh'"
 install --owner root --group root --mode 775 /tmp/context/docker/.resources/deduplicate_path.sh /usr/local/bin/deduplicate_path.sh
@@ -137,7 +141,7 @@ install --owner root --group root --mode 775 /tmp/context/docker/.resources/rosb
 
 # An environment script is installed in the home directory of the '${img_user}'.
 log "Installing file '${img_user_home}/.environment.sh'"
-install --owner "${img_user}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/environment.sh "${img_user_home}/.environment.sh"
+install --owner "${img_user}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/.resources/environment.sh "${img_user_home}/.environment.sh"
 
 # Optional: install .bash_aliases if present
 if [ -e /tmp/context/docker/.resources/dot_bash_aliases ]; then
@@ -169,5 +173,7 @@ ENV IMG_USER="${REQUESTED_USER}" \
 
 USER "${IMG_USER}"
 WORKDIR "/"
+{% if not use_base_img_entrypoint %}
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+{% endif %}
 CMD ["bash"]
