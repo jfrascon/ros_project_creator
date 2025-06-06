@@ -243,6 +243,7 @@ if [ -n "${ros_list_file}" ]; then
     rm -f "${gpg_file}"
 fi
 
+{% if use_environment %}
 # Check if the ${env_line} exists in the file bashrc files.
 env_line='[ -f "${HOME}/.environment.sh" ] && . "${HOME}/.environment.sh"'
 
@@ -253,6 +254,7 @@ if ! grep -Fxq "${env_line}" "${img_user_home}/.bashrc"; then
 else
     log "Line '${env_line}' already exists in file '${img_user_home}/.bashrc'"
 fi
+{% endif %}
 
 log "Removing installation residues from apt cache"
 apt-get autoclean

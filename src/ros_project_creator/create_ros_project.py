@@ -28,7 +28,7 @@ def main():
             description="Creates a new ROS project based on templates",
             allow_abbrev=False,  # Disable prefix matching
             add_help=False,  # Add custom help message
-            formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=35),
+            formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=40),
             # formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=35),
         )
 
@@ -70,8 +70,23 @@ def main():
         entrypoint_group.add_argument(
             "--entrypoint",
             type=str,
-            metavar="ENTRYPOINT_FILE",
+            metavar="ENTRYPOINT_SCRIPT",
             help="Path to a custom entrypoint script to include in the Docker image (replaces the default entrypoint script)",
+        )
+
+        environment_group = parser.add_mutually_exclusive_group()
+
+        environment_group.add_argument(
+            "--no-environment",
+            action="store_true",
+            help="Do not use an environment script. Do not use this option if you set a custom environment script",
+        )
+
+        environment_group.add_argument(
+            "--environment",
+            type=str,
+            metavar="ENVIRONMENT_SCRIPT",
+            help="Path to a custom environment script to include in the Docker image (replaces the default environment script)",
         )
 
         parser.add_argument("--no-vscode", action="store_true", help="Do not create VSCode project")
@@ -105,6 +120,16 @@ def main():
         else:
             entrypoint = None
 
+        if args.environment:
+            environment = Path(args.environment).expanduser().resolve()
+
+            if not environment.is_file():
+                raise FileNotFoundError(
+                    f"Custom environment file '{environment}' does not exist or is not a regular file"
+                )
+        else:
+            environment = None
+
         RosProjectCreator(
             args.project_id,
             Path(args.project_dir),
@@ -114,7 +139,9 @@ def main():
             args.img_id,
             entrypoint,
             args.use_base_img_entrypoint,
-            not args.no_vscode,  # parameter is used_vscode_project, so it is inverted
+            environment,
+            not args.no_environment,  # parameter is use_environment, so it is inverted
+            not args.no_vscode,  # parameter is use_vscode_project, so it is inverted
             not args.no_pre_commit,  # parameter is used_pre_commit, so it is inverted
             not args.no_console_log,  # parameter is used_console_log, so it is inverted
             args.log_file,

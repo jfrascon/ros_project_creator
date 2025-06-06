@@ -41,6 +41,8 @@ class RosProjectCreator:
         img_id: Optional[str],
         custom_entrypoint: Optional[Path],
         use_base_img_entrypoint=False,
+        custom_environment: Optional[Path] = None,
+        use_environment: bool = True,
         use_vscode_project: bool = False,
         use_pre_commit: bool = True,
         use_console_log: bool = True,
@@ -109,7 +111,7 @@ class RosProjectCreator:
                 self._project_dir.relative_to(user_home)
             except ValueError:
                 raise RosProjectCreatorException(
-                    f"Error: Project directory is '{self._project_dir.resolve()}'. Project directory must be inside the home of the active user '{user_home}'"
+                    f"Error: Project directory is '{str(self._project_dir)}'. Project directory must be inside the home of the active user '{user_home}'"
                 )
 
             # If the project dir already exist, do nothing, print message and exit.
@@ -118,7 +120,7 @@ class RosProjectCreator:
             # etc.)
             if self._project_dir.exists():
                 raise RosProjectCreatorException(
-                    f"Project dir '{self._project_dir.resolve()}' already exists. "
+                    f"Project dir '{str(self._project_dir)}' already exists. "
                     f"Remove it manually or choose a different project directory."
                 )
 
@@ -165,6 +167,8 @@ class RosProjectCreator:
 
             self._custom_entrypoint = custom_entrypoint
             self._use_base_img_entrypoint = use_base_img_entrypoint
+            self._use_environment = use_environment
+            self._custom_environment = custom_environment
 
             if self._custom_entrypoint is not None and self._use_base_img_entrypoint:
                 raise RosProjectCreatorException(
@@ -241,22 +245,21 @@ class RosProjectCreator:
             "deps.repos": ["deps/deps.repos", None, 0o664],
             "docker/.resources/deduplicate_path.sh": ["scripts/deduplicate_path.sh", None, 0o775],
             "docker/.resources/dot_bash_aliases.sh": ["scripts/dot_bash_aliases", None, 0o775],
-            "docker/.resources/environment.sh": [
-                f"ros/environment_ros{self._ros_variant.get_version()}.j2",
-                {"ros_distro": self._ros_variant.get_distro()},
-                0o775,
-            ],
             "docker/.resources/install_base_system.sh": [
                 "scripts/install_base_system.sh",
                 None,
                 0o775,
             ],
-            "docker/.resources/install_ros.sh": ["ros/install_ros.j2", {"ros_packages": ros_packages}, 0o775],
+            "docker/.resources/install_ros.sh": [
+                "ros/install_ros.j2",
+                {"use_environment": self._use_environment, "ros_packages": ros_packages},
+                0o775,
+            ],
             "docker/.resources/rosbuild.sh": [f"ros/ros{self._ros_variant.get_version()}build.sh", None, 0o775],
             "docker/.resources/rosdep_init_update.sh": ["ros/rosdep_init_update.sh", None, 0o775],
             "docker/Dockerfile": [
                 "docker/Dockerfile.j2",
-                {"use_base_img_entrypoint": self._use_base_img_entrypoint},
+                {"use_base_img_entrypoint": self._use_base_img_entrypoint, "use_environment": self._use_environment},
                 0o664,
             ],
             "docker/build.py": [
@@ -351,12 +354,37 @@ class RosProjectCreator:
 
         if not self._use_base_img_entrypoint:
             if self._custom_entrypoint is not None:
-                # Validate again here, just in case
+                self._custom_entrypoint = self._custom_entrypoint.expanduser().resolve()
+
                 if not self._custom_entrypoint.exists():
-                    raise RosProjectCreatorException(f"Custom entrypoint file '{self._custom_entrypoint}' not found")
+                    raise RosProjectCreatorException(
+                        f"Custom entrypoint file '{str(self._custom_entrypoint)}' not found"
+                    )
+
                 self._items_to_install["docker/entrypoint.sh"] = [str(self._custom_entrypoint), None, 0o775]
             else:
                 self._items_to_install["docker/entrypoint.sh"] = ["docker/entrypoint.sh", None, 0o775]
+
+        if self._use_environment:
+            if self._custom_environment is not None:
+                self._custom_environment = self._custom_environment.expanduser().resolve()
+
+                if not self._custom_environment.exists():
+                    raise RosProjectCreatorException(
+                        f"Custom environment file '{str(self._custom_environment)}' not found"
+                    )
+
+                self._items_to_install["docker/.resources/environment.sh"] = [
+                    str(self._custom_environment),
+                    None,
+                    0o775,
+                ]
+            else:
+                self._items_to_install["docker/.resources/environment.sh"] = [
+                    f"ros/environment_ros{self._ros_variant.get_version()}.j2",
+                    {"ros_distro": self._ros_variant.get_distro()},
+                    0o775,
+                ]
 
     def _initializate_git_repo(self) -> str:
         cmd = ["git", "init", "--initial-branch=main"]
@@ -385,7 +413,7 @@ class RosProjectCreator:
 
             if not src_item.exists():
                 raise RosProjectCreatorException(
-                    f"Required resource '{src_item.resolve()}' does not exist. Please check the resources directory."
+                    f"Required resource '{src_item}' does not exist. Please check the resources directory."
                 )
 
             if src_item.is_dir():
