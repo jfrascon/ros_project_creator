@@ -221,10 +221,9 @@ set_unique_random_name_to_group() {
     set_name_to_group "${1}" "$(generate_unique_name group "${1}_")"
 }
 
-# =================
+#---------------------------------------------------------------------------------------------------
 # Script execution
-# =================
-
+#---------------------------------------------------------------------------------------------------
 # If here, the user used in docker-compose file or docker run command is a user that exists in the image.
 img_user_id="$(id --user)"
 img_user_entry="$(getent passwd "${img_user_id}" 2>/dev/null)"
@@ -346,6 +345,7 @@ else
         [ -d "${img_user_home}" ] && cd "${img_user_home}"
         # We use gosu here to start a new session with the new user and group ids.
         exec gosu "${IMG_USER}" bash -c '
+            [ -d "${HOME}" ] && cd "${HOME}"
             [ -s "${HOME}/.environment.sh" ] && . "${HOME}/.environment.sh"
             exec "$@"
         ' bash "$@"

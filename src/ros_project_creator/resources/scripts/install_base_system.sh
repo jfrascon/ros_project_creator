@@ -5,38 +5,6 @@
 #-----------------------------------------------------------------------------------------------------------------------
 # Functions
 #-----------------------------------------------------------------------------------------------------------------------
-
-detect_nvidia_libraries() {
-    log "Checking for NVIDIA-related user-space libraries"
-
-    local nvidia_signatures=(
-        "libcudart.so"
-        "libcublas.so"
-        "libcudnn.so"
-        "libnvrtc.so"
-        "libnvinfer.so"
-        "libnvonnxparser.so"
-        "libnpp.*.so"
-        "libnvcuvid.so"
-        "libnvidia-ml.so"
-        "libGLX_nvidia.so"
-        "libEGL_nvidia.so"
-        "libGLESv2_nvidia.so"
-        "nvcc"
-        "libdevice.10.bc"
-    )
-
-    for pattern in "${nvidia_signatures[@]}"; do
-        if find /usr /opt /lib /lib64 /usr/local -type f -name "${pattern}" 2>/dev/null | grep -q .; then
-            log "Detected NVIDIA-related file: '${pattern}'"
-            return 0
-        fi
-    done
-
-    log "No NVIDIA libraries found"
-    return 1
-}
-
 install_packages() {
     local packages=("$@")
     local sim_out
@@ -99,6 +67,7 @@ log() {
 #-----------------------------------------------------------------------------------------------------------------------
 # Requested user to be created in the image.
 REQUESTED_USER="${1}"
+REQUESTED_USER_HOME="${2}"
 requested_user_shell="/bin/bash"
 
 if [ -z "${REQUESTED_USER}" ]; then
@@ -106,10 +75,9 @@ if [ -z "${REQUESTED_USER}" ]; then
     exit 1
 fi
 
-if [ "${REQUESTED_USER}" == root ]; then
-    requested_user_home="/root"
-else
-    requested_user_home="/home/${REQUESTED_USER}"
+if [ -z "${REQUESTED_USER_HOME}" ]; then
+    log "Error: User home not provided" 2
+    exit 1
 fi
 
 # This script is run by root when building the Docker image.
@@ -272,7 +240,7 @@ if ! getent passwd "${REQUESTED_USER}" >/dev/null 2>&1; then
     fi
 
     # Create the user with the specified home directory and shell. Home is created physically.
-    useradd --home-dir "${requested_user_home}" --create-home --shell "${requested_user_shell}" "${REQUESTED_USER}"
+    useradd --home-dir "${REQUESTED_USER_HOME}" --create-home --shell "${requested_user_shell}" "${REQUESTED_USER}"
 
     img_user_entry="$(getent passwd "${REQUESTED_USER}")"
     img_user_id="$(echo "${img_user_entry}" | cut -d: -f3)"
@@ -297,12 +265,12 @@ else
         usermod --shell "${requested_user_shell}" "${REQUESTED_USER}"
     fi
 
-    if [ "${requested_user_home}" != "${img_user_home}" ]; then
-        log "Updating home directory of user '${REQUESTED_USER}' (UID '${img_user_id}') from '${img_user_home}' to '${requested_user_home}'"
-        mkdir --parents "${requested_user_home}" # Create the home directory if it does not exist. If it exists, it will not be modified.
-        usermod --home "${requested_user_home}" --move-home "${REQUESTED_USER}"
+    if [ "${REQUESTED_USER_HOME}" != "${img_user_home}" ]; then
+        log "Updating home directory of user '${REQUESTED_USER}' (UID '${img_user_id}') from '${img_user_home}' to '${REQUESTED_USER_HOME}'"
+        mkdir --parents "${REQUESTED_USER_HOME}" # Create the home directory if it does not exist. If it exists, it will not be modified.
+        usermod --home "${REQUESTED_USER_HOME}" --move-home "${REQUESTED_USER}"
         # Ensure the home directory is owned by the user and group.
-        chown "${REQUESTED_USER}:${img_user_pri_group}" "${requested_user_home}"
+        chown "${REQUESTED_USER}:${img_user_pri_group}" "${REQUESTED_USER_HOME}"
     fi
 fi
 
@@ -350,10 +318,10 @@ fi
 
 # Create basic folders for configuration and binaries.
 dirs_to_create=(
-    "${requested_user_home}/.config"
-    "${requested_user_home}/.local/bin"
-    "${requested_user_home}/.local/lib"
-    "${requested_user_home}/.local/share"
+    "${REQUESTED_USER_HOME}/.config"
+    "${REQUESTED_USER_HOME}/.local/bin"
+    "${REQUESTED_USER_HOME}/.local/lib"
+    "${REQUESTED_USER_HOME}/.local/share"
 )
 
 for dir in "${dirs_to_create[@]}"; do
@@ -366,9 +334,9 @@ for dir in "${dirs_to_create[@]}"; do
 done
 
 # Create the .bashrc file if it does not exist.
-if [ ! -s "${requested_user_home}/.bashrc" ]; then
-    log "File '${requested_user_home}/.bashrc' does not exist. Copying file /etc/skel/.bashrc to '${requested_user_home}/.bashrc'"
-    sudo -H -u "${REQUESTED_USER}" cp --verbose /etc/skel/.bashrc "${requested_user_home}/.bashrc"
+if [ ! -s "${REQUESTED_USER_HOME}/.bashrc" ]; then
+    log "File '${REQUESTED_USER_HOME}/.bashrc' does not exist. Copying file /etc/skel/.bashrc to '${REQUESTED_USER_HOME}/.bashrc'"
+    sudo -H -u "${REQUESTED_USER}" cp --verbose /etc/skel/.bashrc "${REQUESTED_USER_HOME}/.bashrc"
 fi
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -398,7 +366,7 @@ if [ "${REQUESTED_USER}" != root ]; then
     # To avoid warning messages when installing packages we set the environment variable PATH to include
     # the user's local bin directory. Next, an ENV variable is set to include the user's local bin
     # directory in the PATH variable, in the Dockerfile.
-    sudo -H -u "${REQUESTED_USER}" env PATH="${requested_user_home}/.local/bin:${PATH}" \
+    sudo -H -u "${REQUESTED_USER}" env PATH="${REQUESTED_USER_HOME}/.local/bin:${PATH}" \
         python3 -m pip install --no-cache-dir --user ${flag_break} ${python_packages}
 else
     python3 -m pip install --no-cache-dir ${python_packages}

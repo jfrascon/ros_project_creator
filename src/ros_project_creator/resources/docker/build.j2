@@ -19,7 +19,7 @@ if __name__ == "__main__":
         result = run_command(cmd, capture=True, check=False)
         return result.returncode == 0
 
-    def import_dependencies(context_dir: Path, log_file: Path) -> None:
+    def import_dependencies(deps_file: Path, deps_target_dir: Path, log_file: Path) -> None:
         """
         If deps.repos and the 0_deps directory exist, and the `rv` tool is available,
         recursively import dependencies into the 0_deps directory using `rv`.
@@ -29,8 +29,6 @@ if __name__ == "__main__":
         Raises:
             subprocess.CalledProcessError if 'rv import' returns a non-zero code.
         """
-        deps_file = context_dir.joinpath("deps.repos")
-        deps_target_dir = context_dir.joinpath("src", "0_deps")
 
         if not deps_file.is_file():
             print(f"No dependency file found at '{deps_file}', skipping dependency import")
@@ -57,7 +55,7 @@ if __name__ == "__main__":
                 log.write(line)
 
             # Ensure the log file is flushed to disk.
-            full_log.flush()
+            log.flush()
             process.wait()
 
             if process.returncode != 0:
@@ -97,48 +95,6 @@ if __name__ == "__main__":
         full_re = re.compile(rf"^{host_and_port_prefix}{path_re}{tag_re}$")
 
         return bool(full_re.match(name))
-
-    def parse_img_name(full_img_name: str) -> tuple[str, str]:
-        """
-        Parses a full Docker image name into its repository and tag components.
-        If no tag is explicitly provided, 'latest' is assumed.
-
-        Raises ValueError if the image name format is invalid according to is_valid_docker_img_name.
-
-        This version assumes `is_valid_docker_img_name` is strict and rejects names like "image:" (where
-        a tag is implied but empty).
-
-        Examples:
-            "ubuntu" -> ("ubuntu", "latest")
-            "ubuntu:22.04" -> ("ubuntu", "22.04")
-            "myregistry.com/ubuntu:22.04" -> ("myregistry.com/ubuntu", "22.04")
-            "myregistry.com:5000/ubuntu" -> ("myregistry.com:5000/ubuntu", "latest")
-            "myregistry.com:5000/ubuntu:22.04" -> ("myregistry.com:5000/ubuntu", "22.04")
-            "image:" would be rejected by is_valid_docker_img_name before this function is effectively called
-                    or would cause this function to raise ValueError if called directly.
-        """
-        if not is_valid_docker_img_name(full_img_name):
-            raise ValueError(f"Identifier '{full_img_name}' is not a valid Docker image name")
-
-        repository = full_img_name
-        tag = "latest"
-
-        last_colon_idx = full_img_name.rfind(":")
-
-        if last_colon_idx != -1:
-            # A colon exists. Determine if it's for a tag or part of host:port.
-            is_part_of_host_port = False
-            # If a slash exists *after* this last colon, it means the colon was part of a host:port.
-            if "/" in full_img_name[last_colon_idx + 1 :]:
-                is_part_of_host_port = True
-
-            if not is_part_of_host_port:
-                # This colon is for the tag.
-                # Since is_valid_docker_img_name is strict, the tag part cannot be empty.
-                repository = full_img_name[:last_colon_idx]
-                tag = full_img_name[last_colon_idx + 1 :]
-
-        return repository, tag
 
     def run_command(
         cmd: list[str], capture: bool = False, check: bool = True, cwd: Path | None = None
@@ -203,9 +159,20 @@ if __name__ == "__main__":
     args.meta_desc = args.meta_desc.strip()
     args.meta_authors = args.meta_authors.strip()
 
+    this_file = Path(__file__).resolve()
+
+    # To compute paths we use relative paths from the current file. This way multiple users with
+    # this file placed in different directories can use it without issues, having into account that
+    # this file is under source control.
+
     base_img = "{{ base_img }}"
     img_id_to_build = "{{ img_id }}"
     requested_user = "{{ img_user }}"
+    requested_user_home = "{{ img_user_home }}"
+    ros_distro = "{{ ros_distro }}"
+    ros_version = "{{ ros_version }}"
+    deps_file = this_file.joinpath("{{ deps_file }}").resolve()
+    deps_target_dir = this_file.joinpath("{{ deps_target_dir }}").resolve()
 
     if not is_valid_docker_img_name(base_img):
         print(f"Error: Invalid Docker base image name: '{base_img}'", file=sys.stderr)
@@ -219,14 +186,14 @@ if __name__ == "__main__":
         print(f"Error: Invalid user argument '{requested_user}'", file=sys.stderr)
         sys.exit(1)
 
-    docker_dir = {{docker_dir}}
+    docker_dir = this_file.joinpath("{{relpath_to_docker_dir}}").resolve()
     dockerfile = docker_dir.joinpath("Dockerfile")
 
     if not dockerfile.is_file():
         print(f"Error: File '{dockerfile.resolve()}' is required")
         sys.exit(1)
 
-    context_dir = {{context_dir}}
+    context_dir = this_file.joinpath("{{relpath_to_context_dir}}").resolve()
 
     if not context_dir.exists():
         print(f"Error: Directory '{context_dir}' does not exist")
@@ -249,14 +216,14 @@ if __name__ == "__main__":
         docker_ignore_msg = f"The build process will use the dockerignore file '{dst_dockerignore.resolve()}'"
     elif src_dockerignore_exists:
         try:
-            shutil.copy(src_dockerignore, dst_dockerignore)
+            shutil.copyfile(src_dockerignore, dst_dockerignore)
             dockerignore_copied = True
             docker_ignore_msg = f"The build process will use the dockerignore file '{src_dockerignore.resolve()}'"
         except Exception as e:
             print(f"Error: {e}")
             sys.exit(1)
     else:
-        docker_ignore_msg = "The build process will not use a .dockerignore file"
+        docker_ignore_msg = "The build process will not use a dockerignore file"
 
     # We want to use volume mount during build, which will look like this:
     # RUN --mount=type=bind,source=...,target=... && <command>
@@ -294,8 +261,9 @@ if __name__ == "__main__":
     build_args = {
         "BASE_IMG": base_img,
         "REQUESTED_USER": requested_user,
-        "ROS_DISTRO": "{{ ros_distro }}",
-        "ROS_VERSION": "{{ ros_version }}",
+        "REQUESTED_USER_HOME": requested_user_home,
+        "ROS_DISTRO": ros_distro,
+        "ROS_VERSION": ros_version,
     }
 
     for k, v in build_args.items():
@@ -331,20 +299,21 @@ if __name__ == "__main__":
     # the option --no-import-deps we can save time to the user.
     import_deps = not args.no_import_deps
 
-    if import_deps:
-        print("Importing packages from file 'deps.repos'")
-        try:
-            import_dependencies(context_dir, complete_log_file)
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-
-    print("Executing command:")
-    print(" ".join(cmd))
-
     exit_code = 0
 
     try:
+        if import_deps:
+            print("Importing packages from file 'deps.repos'")
+
+            try:
+                import_dependencies(deps_file, deps_target_dir, complete_log_file)
+            except subprocess.CalledProcessError as e:
+                exit_code = e.returncode
+                raise
+
+        print("Executing command:")
+        print(" ".join(cmd))
+
         with subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -391,6 +360,7 @@ if __name__ == "__main__":
                             specific_log_file.unlink()
                         except OSError as e:
                             print(f"Error: Could not remove log file: {e}", file=sys.stderr)
+                            exit_code = exit_code if exit_code != 0 else 1
                     else:
                         print(f"Specific log file '{specific_log_file}' is ready.")
                 else:
@@ -398,6 +368,7 @@ if __name__ == "__main__":
                         complete_log_file.unlink(missing_ok=True)
                     except OSError as e:
                         print(f"Error: Could not remove log file: {e}", file=sys.stderr)
+                        exit_code = exit_code if exit_code != 0 else 1
             else:
                 print(f"Log file '{complete_log_file}' does not exist.")
     except KeyboardInterrupt:

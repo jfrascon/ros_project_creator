@@ -14,6 +14,7 @@ LABEL org.opencontainers.image.title="Project Docker Image" \
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG REQUESTED_USER=non_root
+ARG REQUESTED_USER_HOME=/home/non_root
 ARG ROS_DISTRO=humble
 ARG ROS_VERSION=2
 
@@ -24,7 +25,7 @@ WORKDIR /
 # The copied files are lightweight, therefore the size of the associated layer is small.
 # The script install_core.sh is responsible for installing system dependencies.
 COPY --chmod=775 docker/.resources/install_base_system.sh /tmp/
-RUN /tmp/install_base_system.sh "${REQUESTED_USER}" && rm -rf /tmp/install_base_system.sh
+RUN /tmp/install_base_system.sh "${REQUESTED_USER}" "${REQUESTED_USER_HOME}" && rm -rf /tmp/install_base_system.sh
 
 COPY --chmod=775 docker/.resources/install_ros.sh /tmp/install_ros.sh
 RUN /tmp/install_ros.sh "${ROS_DISTRO}" "${ROS_VERSION}" "${REQUESTED_USER}" && rm -rf /tmp/install_ros.sh
@@ -39,39 +40,39 @@ log() { echo "[$(date --utc '+%Y-%m-%d_%H-%M-%S')]" "$@"; }
 img_user="${REQUESTED_USER}"
 img_user_entry="$(getent passwd "${img_user}")"
 
-[ -z "${img_user_entry}" ] && {
+if [ -z "${img_user_entry}" ]; then
     log "Error: User '${img_user}' not found" >&2
     exit 1
-}
+fi
 
 {% if not use_base_img_entrypoint %}
-[ ! -f /tmp/context/docker/entrypoint.sh ] && {
+if [ ! -f /tmp/context/docker/entrypoint.sh ]; then
     log "Error: Script entrypoint.sh not provided" >&2
     exit 1
-}
+fi
 {% endif %}
 
 {% if use_environment %}
-[ ! -f /tmp/context/docker/.resources/environment.sh ] && {
+if [ ! -f /tmp/context/docker/.resources/environment.sh ]; then
     log "Error: Script environment.sh not provided" >&2
     exit 1
-}
+fi
 {% endif %}
 
-[ ! -f /tmp/context/docker/.resources/deduplicate_path.sh ] && {
+if [ ! -f /tmp/context/docker/.resources/deduplicate_path.sh ]; then
     log "Error: Script deduplicate_path.sh not provided" >&2
     exit 1
-}
+fi
 
-[ ! -f /tmp/context/docker/.resources/rosbuild.sh ] && {
+if [ ! -f /tmp/context/docker/.resources/rosbuild.sh ]; then
     log "Error: Script rosbuild.sh not provided" >&2
     exit 1
-}
+fi
 
-[ ! -f /tmp/context/docker/.resources/rosdep_init_update.sh ] && {
+if [ ! -f /tmp/context/docker/.resources/rosdep_init_update.sh ]; then
     log "Error: Script rosdep_init_update.sh not provided" >&2
     exit 1
-}
+fi
 
 # Check if ${ROS_DISTRO} is installed properly, otherwise abort the installation.
 ros_distro=$(dpkg --list | sed -nE 's/^ii\s+ros-([a-z]+)-ros-core.*$/\1/p' | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
@@ -95,26 +96,24 @@ if [ "${ROS_DISTRO}" != "${ros_distro}" ]; then
 fi
 
 rosdep_ignored_key_file=/tmp/context/docker/.resources/rosdep_ignored_keys.yaml
-cp /tmp/context/docker/.resources/rosdep_init_update.sh /tmp/rosdep_init_update.sh
-chmod 775 /tmp/rosdep_init_update.sh
-
 src_dir="/tmp/context/src"
 
-if [ ! -d "${src_dir}" ]; then
-    log "Error: Source directory '${src_dir}' does not exist" >&2
-    exit 1
-fi
-
+# Copy the rosdep initialization script to a temporary location to be able to mark it as executable
+# and execute it.
+cp /tmp/context/docker/.resources/rosdep_init_update.sh /tmp/rosdep_init_update.sh
+chmod 775 /tmp/rosdep_init_update.sh
 /tmp/rosdep_init_update.sh "${ROS_DISTRO}" "${img_user}" "${rosdep_ignored_key_file}" "${src_dir}"
 rm -f /tmp/rosdep_init_update.sh
 
 if [ -s /tmp/context/docker/.resources/colcon_mixin_metadata.sh ]; then
+    # Copy the colcon mixin metadata script to a temporary location to be able to mark it as
+    # executable and execute it.
     cp /tmp/context/docker/.resources/colcon_mixin_metadata.sh /tmp/colcon_mixin_metadata.sh
     chmod 775 /tmp/colcon_mixin_metadata.sh
     /tmp/colcon_mixin_metadata.sh "${img_user}"
     rm -f /tmp/colcon_mixin_metadata.sh
 else
-    log "Error: No colcon_mixin_metadata.sh script found, skipping colcon mixin metadata installation"
+    log "No colcon_mixin_metadata.sh script found, skipping colcon mixin metadata installation"
 fi
 
 # Execute the custom dependency install script for the project.
@@ -162,6 +161,7 @@ EOF
 # This is required even if they were already defined earlier after the FROM.
 ARG DEBIAN_FRONTEND
 ARG REQUESTED_USER
+ARG REQUESTED_USER_HOME
 
 # Configure timezone and localization settings.
 # - TZ: Set the timezone to UTC to ensure consistent time handling across environments.
@@ -172,11 +172,22 @@ ENV IMG_USER="${REQUESTED_USER}" \
     LC_ALL="en_US.UTF-8" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US:en" \
-    DEBIAN_FRONTEND="${DEBIAN_FRONTEND}"
+    DEBIAN_FRONTEND="${DEBIAN_FRONTEND}" \
+    ROS_HOME="${REQUESTED_USER_HOME}/.ros" \
+    ROS_LOG_DIR="${REQUESTED_USER_HOME}/.ros/logs" \
+    ROS_TEST_RESULTS_DIR="${REQUESTED_USER_HOME}/.ros/tests" \
+    ROS_CONFIG_HOME="${REQUESTED_USER_HOME}/.config/ros.org" \
+    RTI_NC_LICENSE_ACCEPTED="no" \
+    RMW_IMPLEMENTATION="rmw_fastrtps_cpp" \
+    RCUTILS_COLORIZED_OUTPUT="1" \
+    RCUTILS_LOGGING_USE_STDOUT="1" \
+    RCUTILS_LOGGING_BUFFERED_STREAM="1" \
+    RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}] {time} {name}: {message}"
+# [{severity} {time}] [{name}]: {message} ({function_name}() at {file_name}:{line_number})
 
 USER "${IMG_USER}"
 WORKDIR "/"
 {% if not use_base_img_entrypoint -%}
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 {% endif -%}
-CMD ["bash"]
+CMD ["bash", "-i"]

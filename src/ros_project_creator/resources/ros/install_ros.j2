@@ -156,19 +156,19 @@ img_user_home="$(getent passwd "${IMG_USER}" | cut -d: -f6)"
 ros_distro=$(dpkg --list | sed -nE 's/^ii\s+ros-([a-z]+)-ros-core.*$/\1/p' | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
 # Count the number of ROS distributions found
-num_distros=$(echo "${ros_distro}" | wc -w)
+num_ros_distros=$(echo "${ros_distro}" | wc -w)
 
-if [ "${num_distros}" -gt 1 ]; then
+if [ "${num_ros_distros}" -gt 1 ]; then
     log "Error: More than one ROS distro is installed: ${ros_distro}" 2
     exit 1
 fi
 
-if [ "${num_distros}" -eq 1 ] && [ "${ROS_DISTRO}" != "${ros_distro}" ]; then
+if [ "${num_ros_distros}" -eq 1 ] && [ "${ROS_DISTRO}" != "${ros_distro}" ]; then
     log "Error: Found ROS '${ros_distro}' installed, but ROS '${ROS_DISTRO}' was requested to install" 2
     exit 1
 fi
 
-# If the execution reaches this point, either num_distros is 0, no ROS distro installed, or it is 1
+# If the execution reaches this point, either num_ros_distros is 0, no ROS distro installed, or it is 1
 # and the requested ROS distro is already installed.
 
 # On the 1st of June 2025, the way to manage ROS gpg keys and sources changed. A new package for ROS
@@ -185,7 +185,7 @@ sanitize "${ros_version_str}"
 
 # ROS packages to install.
 packages=(
-    {{ ros_packages }}
+{{ ros_packages }}
 )
 
 apt-get update # Required to load the cache in the build container

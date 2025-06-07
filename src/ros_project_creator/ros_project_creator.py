@@ -147,13 +147,13 @@ class RosProjectCreator:
                 raise RosProjectCreatorException("Image user must not contain spaces")
 
             if self._img_user == "root":
-                img_user_home = Path(f"/{self._img_user}")
+                self._img_user_home = Path(f"/{self._img_user}")
             else:
-                img_user_home = Path(f"/home/{self._img_user}")
+                self._img_user_home = Path(f"/home/{self._img_user}")
 
-            self._img_workspace_dir = img_user_home.joinpath("workspace")
-            self._img_datasets_dir = img_user_home.joinpath("datasets")
-            self._img_ssh_dir = img_user_home.joinpath(".ssh")
+            self._img_workspace_dir = self._img_user_home.joinpath("workspace")
+            self._img_datasets_dir = self._img_user_home.joinpath("datasets")
+            self._img_ssh_dir = self._img_user_home.joinpath(".ssh")
 
             # If img_id is not provided, it is set to the default value.
             self._img_id = Utilities.clean_str(img_id) or f"{self._project_id}:latest"
@@ -223,59 +223,98 @@ class RosProjectCreator:
             raise RosProjectCreatorException("pre-commit binary not found in the system")
 
     def _create_items_to_install(self) -> None:
+        docker_dir = self._project_dir.joinpath("docker")
+
+        # Relative path to the build script from the project directory.
         relative_build_script = Path("docker/build.py")
+        # Path to the build script.
         build_script = self._project_dir.joinpath(relative_build_script)
-        relpath = os.path.relpath(str(self._project_dir), str(build_script))
+
+        # Relative path to the deps file from the project directory.
+        relative_deps_file = Path("deps.repos")
+        # Path to the deps file.
+        deps_file = self._project_dir.joinpath(relative_deps_file)
+
+        # Path where the dependency packages will be installed.
+        relative_deps_targer_dir = Path("src/0_deps")
+        deps_target_dir = self._project_dir.joinpath(relative_deps_targer_dir)
+
+        # The context directory is the project directory.
+        relpath_to_context_dir_from_build_script = os.path.relpath(str(self._project_dir), str(build_script))
+        relpath_to_docker_dir_from_build_script = os.path.relpath(str(docker_dir), str(build_script))
+        relpath_to_deps_file_from_build_script = os.path.relpath(str(deps_file), str(build_script))
+        relpath_to_deps_target_dir_from_build_script = os.path.relpath(str(deps_target_dir), str(build_script))
 
         ros_packages_file = self._resources_dir.joinpath(f"ros/packages_ros{self._ros_variant.get_version()}.txt")
         Utilities.assert_file_existence(ros_packages_file, f"File '{ros_packages_file}' is required")
         ros_packages = Utilities.read_file(ros_packages_file)
 
-        # By using a dictionary we can sort the keys and create the files in a specific order, because the key is the
-        # file to create, relative to the project directory.
-        # The value is a tuple with the source file path, the context for Jinja2 rendering (if any), and the file
+        # By using a dictionary we can sort the keys and create the files in a specific order,
+        # because the key is the file to create, relative to the project directory.
+
+        # The value is a list:
+        # If the list has one element, the key represents a directory to be 'created' somehow.
+        #    If the first element of the list is not None, then this element is a directory to be
+        #    copied in the path specified by the key.
+        #    If the first element of the list is None, then the key is a directory to be created.
+        #
+        # If the list has two elements, the key represents a file to be 'created' somehow.
+        #    If the first element of the list is not None, then this element is a file to be
+        #    copied in the path specified by the key. The second element of the list is a boolean
+        #    indicating if the file should be created with executable permissions (T) or not (F).
+        #    If the first element of the list is None, then the key is a file to be created, and the
+        #    second element of the list is a boolean indicating if the file should be created with
+        #    executable permissions (T) or not (F).
+        #
+        # If the list has three elements, the key represents a file to be 'created' with Jinja2
+        # rendering. The first element of the list is the source file path, which is a Jinja2
+        # template. The second element is a dictionary with the context for Jinja2 rendering.
+        # The third element is a boolean indicating if the file should be created with executable
+        # permissions (True) or not (False).
+
+        #  with the source file path, the context for Jinja2 rendering (if any), and the file
         # permissions.
         # The source file path is relative to the resources directory.
         # The context is a dictionary with the variables to be replaced in the Jinja2 template.
-        # The file permissions are the octal permissions to be set for the file.
+        # The third element is a boolean indicating if the file should be created with executable
+        # permissions (True) or not (False).
 
         self._items_to_install = {
-            ".gitignore": ["git/dot_gitignore", None, 0o664],
-            ".gitlab": ["git/gitlab", None, 0o775],
-            "deps.repos": ["deps/deps.repos", None, 0o664],
-            "docker/.resources/deduplicate_path.sh": ["scripts/deduplicate_path.sh", None, 0o775],
-            "docker/.resources/dot_bash_aliases.sh": ["scripts/dot_bash_aliases", None, 0o775],
-            "docker/.resources/install_base_system.sh": [
-                "scripts/install_base_system.sh",
-                None,
-                0o775,
-            ],
+            ".gitignore": ["git/dot_gitignore", False],
+            ".gitlab": ["git/gitlab"],
+            f"{str(relative_deps_file)}": ["deps/deps.repos", False],
+            "docker/.resources/deduplicate_path.sh": ["scripts/deduplicate_path.sh", True],
+            "docker/.resources/dot_bash_aliases.sh": ["scripts/dot_bash_aliases", True],
+            "docker/.resources/install_base_system.sh": ["scripts/install_base_system.sh", True],
             "docker/.resources/install_ros.sh": [
                 "ros/install_ros.j2",
                 {"use_environment": self._use_environment, "ros_packages": ros_packages},
-                0o775,
+                True,
             ],
-            "docker/.resources/rosbuild.sh": [f"ros/ros{self._ros_variant.get_version()}build.sh", None, 0o775],
-            "docker/.resources/rosdep_init_update.sh": ["ros/rosdep_init_update.sh", None, 0o775],
+            "docker/.resources/rosbuild.sh": [f"ros/ros{self._ros_variant.get_version()}build.sh", True],
+            "docker/.resources/rosdep_init_update.sh": ["ros/rosdep_init_update.sh", True],
             "docker/Dockerfile": [
                 "docker/Dockerfile.j2",
                 {"use_base_img_entrypoint": self._use_base_img_entrypoint, "use_environment": self._use_environment},
-                0o664,
+                False,
             ],
-            "docker/build.py": [
+            str(relative_build_script): [
                 "docker/build.j2",
                 {
                     "description": f"Builds the Docker image '{self._img_id}' for the project '{self._project_id}', using the base image '{self._base_img}', with active user '{self._img_user}' and 'ROS{self._ros_variant.get_version()}-{self._ros_variant.get_distro()}'",
+                    "project_id": self._project_id,
+                    "relpath_to_docker_dir": relpath_to_docker_dir_from_build_script,
+                    "relpath_to_context_dir": relpath_to_context_dir_from_build_script,
                     "base_img": self._base_img,
-                    "img_user": self._img_user,
                     "img_id": self._img_id,
-                    "docker_dir": "Path(__file__).parent",
-                    "context_dir": f'Path(__file__).joinpath("{relpath}").resolve()  # context is the project folder',
+                    "img_user": self._img_user,
+                    "img_user_home": str(self._img_user_home),
                     "ros_distro": self._ros_variant.get_distro(),
                     "ros_version": self._ros_variant.get_version(),
-                    "project_id": self._project_id,
+                    "deps_file": relpath_to_deps_file_from_build_script,
+                    "deps_target_dir": relpath_to_deps_target_dir_from_build_script,
                 },
-                0o775,
+                True,
             ],
             "docker/docker-compose.yaml": [
                 "docker/docker-compose.j2",
@@ -290,66 +329,70 @@ class RosProjectCreator:
                     "ext_uid": "1000",
                     "ext_upgid": "1000",
                 },
-                0o664,
+                False,
             ],
-            "docker/dockerignore": ["docker/dot_dockerignore", None, 0o664],
-            "install_deps.sh": ["deps/install_deps.sh", None, 0o775],
+            "docker/dockerignore": ["docker/dot_dockerignore", False],
+            "install_deps.sh": ["deps/install_deps.sh", True],
             "README.md": [
                 "README.j2",
                 {
                     "project_id": self._project_id,
                 },
-                0o664,
+                False,
             ],
-            "src/.clang-format": ["clang/dot_clang-format", None, 0o664],
-            "src/.clang-tidy": ["clang/dot_clang-tidy", None, 0o664],
+            "src/.clang-format": ["clang/dot_clang-format", False],
+            "src/.clang-tidy": ["clang/dot_clang-tidy", False],
+            str(relative_deps_targer_dir): [None],
             "src/bringup/CMakeLists.txt": [
                 f"ros/bringup_CMakeLists_ros{self._ros_variant.get_version()}.j2",
                 {
                     "c_version": self._ros_variant.get_c_version(),
                     "cpp_version": self._ros_variant.get_cpp_version(),
                 },
-                0o664,
+                False,
             ],
+            "src/bringup/config": [None],
+            "src/bringup/launch": [None],
             "src/bringup/package.xml": [
                 f"ros/bringup_package_ros{self._ros_variant.get_version()}.xml",
-                None,
-                0o664,
+                False,
             ],
+            "src/bringup/rviz": [None],
+            "src/bringup/scripts": [None],
             "src/simulation/CMakeLists.txt": [
                 f"ros/simulation_CMakeLists_ros{self._ros_variant.get_version()}.j2",
                 {
                     "c_version": self._ros_variant.get_c_version(),
                     "cpp_version": self._ros_variant.get_cpp_version(),
                 },
-                0o664,
+                False,
             ],
+            "src/simulation/config": [None],
+            "src/simulation/launch": [None],
             "src/simulation/package.xml": [
                 f"ros/simulation_package_ros{self._ros_variant.get_version()}.xml",
-                None,
-                0o664,
+                False,
             ],
+            "src/simulation/rviz": [None],
+            "src/simulation/scripts": [None],
         }
 
         if self._use_pre_commit:
-            self._items_to_install[".pre-commit-config.yaml"] = ["git/dot_pre-commit-config.yaml", None, 0o664]
+            self._items_to_install[".pre-commit-config.yaml"] = ["git/dot_pre-commit-config.yaml", False]
 
         if self._ros_variant.get_version() == 1:
             self._items_to_install[".catkin_tools/profiles/default/config.yaml"] = [
                 "ros/catkin_config_ros1.yaml",
-                None,
-                0o664,
+                False,
             ]
         else:
             self._items_to_install["docker/.resources/colcon_mixin_metadata.sh"] = [
                 "ros/colcon_mixin_metadata.sh",
-                None,
-                0o775,
+                True,
             ]
             self._items_to_install["docker/.resources/rosdep_ignored_keys.yaml"] = [
                 "ros/rosdep_ignored_keys_ros2.yaml",
-                None,
-                0o664,
+                False,
             ]
 
         if not self._use_base_img_entrypoint:
@@ -361,9 +404,9 @@ class RosProjectCreator:
                         f"Custom entrypoint file '{str(self._custom_entrypoint)}' not found"
                     )
 
-                self._items_to_install["docker/entrypoint.sh"] = [str(self._custom_entrypoint), None, 0o775]
+                self._items_to_install["docker/entrypoint.sh"] = [str(self._custom_entrypoint), True]
             else:
-                self._items_to_install["docker/entrypoint.sh"] = ["docker/entrypoint.sh", None, 0o775]
+                self._items_to_install["docker/entrypoint.sh"] = ["docker/entrypoint.sh", True]
 
         if self._use_environment:
             if self._custom_environment is not None:
@@ -376,14 +419,13 @@ class RosProjectCreator:
 
                 self._items_to_install["docker/.resources/environment.sh"] = [
                     str(self._custom_environment),
-                    None,
-                    0o775,
+                    True,
                 ]
             else:
                 self._items_to_install["docker/.resources/environment.sh"] = [
                     f"ros/environment_ros{self._ros_variant.get_version()}.j2",
                     {"ros_distro": self._ros_variant.get_distro()},
-                    0o775,
+                    True,
                 ]
 
     def _initializate_git_repo(self) -> str:
@@ -405,55 +447,95 @@ class RosProjectCreator:
         self._create_items_to_install()
 
         for key in sorted(self._items_to_install.keys()):
+            dst_path = self._project_dir.joinpath(key).resolve()
 
             item = self._items_to_install[key]
+            relative_src_path = item[0]
 
-            dst_item = self._project_dir.joinpath(key).resolve()
-            src_item = self._resources_dir.joinpath(item[0]).resolve()
+            if len(item) == 1:
+                self._logger.info(f"Creating directory '{dst_path}'")
 
-            if not src_item.exists():
-                raise RosProjectCreatorException(
-                    f"Required resource '{src_item}' does not exist. Please check the resources directory."
-                )
+                if relative_src_path is not None:
+                    src_path = self._resources_dir.joinpath(relative_src_path).resolve()
 
-            if src_item.is_dir():
-                # If the source item is a directory, copy the directory recursively.
-                self._logger.info(f"Creating directory '{dst_item}'")
-                shutil.copytree(src_item, dst_item, copy_function=shutil.copy2)
-            else:
-                # If the source item is a file, copy the file.
-                self._logger.info(f"Creating file '{dst_item.resolve()}'")
+                    if not src_path.exists():
+                        raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
 
-                if not dst_item.parent.exists():
-                    dst_item.parent.mkdir(parents=True, mode=0o775)
+                    if not src_path.is_dir():
+                        raise RosProjectCreatorException(f"Required resource '{str(src_path)}' is not a directory.")
 
-                if item[1] is not None:
-                    jinja2_env = Environment(
-                        loader=FileSystemLoader(src_item.parent), trim_blocks=True, lstrip_blocks=True
-                    )
-                    jinja2_template = jinja2_env.get_template(src_item.name)
-                    rendered_text = jinja2_template.render(item[1])
+                    if not dst_path.parent.exists():
+                        dst_path.parent.mkdir(parents=True)
 
-                    with dst_item.open("w") as f:
-                        f.write(rendered_text)
+                    shutil.copytree(src_path, dst_path, copy_function=shutil.copy2)
+                    dst_path.chmod(0o775)
                 else:
-                    shutil.copy2(src_item, dst_item)
+                    dst_path.mkdir(parents=True)
+            elif len(item) == 2:
+                self._logger.info(f"Creating file '{dst_path}'")
 
-                dst_item.chmod(item[2])  # Set the file permissions
+                if relative_src_path is not None:
+                    src_path = self._resources_dir.joinpath(item[0]).resolve()
 
-        # Create directories in bringup and simulation directory structures.
-        relative_brigup_pkg_path = Path("src/bringup")
-        relative_simulation_pkg_path = Path("src/simulation")
-        folders = ["config", "launch", "rviz", "scripts"]
+                    if not src_path.exists():
+                        raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
 
-        for folder in folders:
-            path = self._project_dir.joinpath(relative_brigup_pkg_path, folder)
-            self._logger.info(f"Creating directory '{path}'")
-            path.mkdir(parents=True, mode=0o775)
+                    if not src_path.is_file():
+                        raise RosProjectCreatorException(f"Required resource '{str(src_path)}' is not a file.")
 
-            path = self._project_dir.joinpath(relative_simulation_pkg_path, folder)
-            self._logger.info(f"Creating directory '{path}'")
-            path.mkdir(parents=True, mode=0o775)
+                    if not dst_path.parent.exists():
+                        dst_path.parent.mkdir(parents=True)
+
+                    shutil.copyfile(src_path, dst_path)
+                else:
+                    dst_path.touch()
+
+                if item[1]:
+                    dst_path.chmod(0o775)
+                else:
+                    dst_path.chmod(0o664)
+            elif len(item) == 3:
+                self._logger.info(f"Creating file '{dst_path}'")
+
+                if relative_src_path is None:
+                    raise RosProjectCreatorException(
+                        f"Relative source path can't be empty for element '{str(dst_path)}'."
+                    )
+
+                src_path = self._resources_dir.joinpath(item[0]).resolve()
+
+                if not src_path.exists():
+                    raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
+
+                if not src_path.is_file():
+                    raise RosProjectCreatorException(f"Required resource '{str(src_path)}' is not a file.")
+
+                context = item[1]
+
+                if context is None:
+                    raise RosProjectCreatorException(
+                        f"Context for Jinja2 rendering can't be None for element '{str(dst_path)}'."
+                    )
+
+                if not isinstance(context, dict):
+                    raise RosProjectCreatorException(
+                        f"Context for Jinja2 rendering must be a dictionary for element '{str(dst_path)}'."
+                    )
+
+                if not dst_path.parent.exists():
+                    dst_path.parent.mkdir(parents=True)
+
+                jinja2_env = Environment(loader=FileSystemLoader(src_path.parent), trim_blocks=True, lstrip_blocks=True)
+                jinja2_template = jinja2_env.get_template(src_path.name)
+                rendered_text = jinja2_template.render(context)
+
+                with dst_path.open("w") as f:
+                    f.write(rendered_text)
+
+                if item[2]:
+                    dst_path.chmod(0o775)
+                else:
+                    dst_path.chmod(0o664)
 
     def _install_pre_commit_config(self) -> str:
         cmd = ["pre-commit", "install"]
