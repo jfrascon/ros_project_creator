@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Check if workspace setup exists
+# Check if workspace setup exists.
 if [ -s "${HOME}/workspace/install/setup.bash" ]; then
     . "${HOME}/workspace/install/setup.bash"
 elif [ -s "/opt/ros/{{ ros_distro }}/setup.bash" ]; then
