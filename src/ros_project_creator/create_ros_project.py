@@ -114,9 +114,7 @@ def main():
             entrypoint = Path(args.entrypoint).expanduser().resolve()
 
             if not entrypoint.is_file():
-                raise FileNotFoundError(
-                    f"Custom entrypoint file '{entrypoint}' does not exist or is not a regular file"
-                )
+                raise FileNotFoundError(f"Custom entrypoint file '{entrypoint}' not found.")
         else:
             entrypoint = None
 
@@ -124,9 +122,7 @@ def main():
             environment = Path(args.environment).expanduser().resolve()
 
             if not environment.is_file():
-                raise FileNotFoundError(
-                    f"Custom environment file '{environment}' does not exist or is not a regular file"
-                )
+                raise FileNotFoundError(f"Custom environment file '{environment}' not found.")
         else:
             environment = None
 
