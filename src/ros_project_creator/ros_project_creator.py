@@ -310,8 +310,6 @@ class RosProjectCreator:
             "docker/Dockerfile": [
                 "docker/Dockerfile.j2",
                 {
-                    "ros_distro": self._ros_variant.get_distro(),
-                    "ros_version": self._ros_variant.get_version(),
                     "use_base_img_entrypoint": self._use_base_img_entrypoint,
                     "use_environment": self._use_environment,
                     "extra_ros_env_vars": ros_env_vars,
