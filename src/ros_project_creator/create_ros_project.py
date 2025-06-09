@@ -42,8 +42,6 @@ def main():
             help="Path where the project will be created (e.g. '~/projects/robproj')",
         )
 
-        parser.add_argument("ros_distro", type=str, help=f"ROS distro to use: {supported_ros_distros}")
-
         parser.add_argument("base_img", type=str, help="Base Docker image to use (e.g. 'eutrob/eut_ros:humble')")
 
         parser.add_argument(
@@ -51,6 +49,8 @@ def main():
             type=str,
             help="Active user to use in the resulting Docker image",
         )
+
+        parser.add_argument("ros_distro", type=str, help=f"ROS distro to use: {supported_ros_distros}")
 
         parser.add_argument(
             "--img-id",

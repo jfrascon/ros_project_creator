@@ -249,6 +249,20 @@ class RosProjectCreator:
         Utilities.assert_file_existence(ros_packages_file, f"File '{ros_packages_file}' is required")
         ros_packages = Utilities.read_file(ros_packages_file)
 
+        if not ros_packages.strip():
+            raise RosProjectCreatorException(f"File 'packages_ros{ros_version}.txt' is empty.")
+
+        ros_env_vars_file = self._resources_dir.joinpath(
+            f"ros/environment_variables_ros{self._ros_variant.get_version()}.txt"
+        )
+        Utilities.assert_file_existence(ros_env_vars_file, f"File '{ros_env_vars_file}' is required")
+        ros_env_vars = Utilities.read_file(ros_env_vars_file)
+
+        if not ros_env_vars.strip():
+            raise RosProjectCreatorException(
+                f"File 'environment_variables_ros{self._ros_variant.get_version()}.txt' is empty."
+            )
+
         # By using a dictionary we can sort the keys and create the files in a specific order,
         # because the key is the file to create, relative to the project directory.
 
@@ -295,7 +309,13 @@ class RosProjectCreator:
             "docker/.resources/rosdep_init_update.sh": ["ros/rosdep_init_update.sh", True],
             "docker/Dockerfile": [
                 "docker/Dockerfile.j2",
-                {"use_base_img_entrypoint": self._use_base_img_entrypoint, "use_environment": self._use_environment},
+                {
+                    "ros_distro": self._ros_variant.get_distro(),
+                    "ros_version": self._ros_variant.get_version(),
+                    "use_base_img_entrypoint": self._use_base_img_entrypoint,
+                    "use_environment": self._use_environment,
+                    "extra_ros_env_vars": ros_env_vars,
+                },
                 False,
             ],
             str(relative_build_script): [
@@ -399,6 +419,7 @@ class RosProjectCreator:
             if self._custom_entrypoint is not None:
                 self._custom_entrypoint = self._custom_entrypoint.expanduser().resolve()
 
+                # if not entrypoint.is_file() or entrypoint.stat().st_size == 0:
                 if not self._custom_entrypoint.exists():
                     raise RosProjectCreatorException(
                         f"Custom entrypoint file '{str(self._custom_entrypoint)}' not found"
