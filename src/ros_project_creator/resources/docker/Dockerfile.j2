@@ -27,7 +27,7 @@ WORKDIR /
 COPY --chmod=775 docker/.resources/install_base_system.sh /tmp/
 RUN /tmp/install_base_system.sh "${REQUESTED_USER}" "${REQUESTED_USER_HOME}" && rm -rf /tmp/install_base_system.sh
 
-COPY --chmod=775 docker/.resources/install_ros.sh /tmp/install_ros.sh
+COPY --chmod=775 docker/.resources/install_ros.sh /tmp/
 RUN /tmp/install_ros.sh "${ROS_DISTRO}" "${ROS_VERSION}" "${REQUESTED_USER}" && rm -rf /tmp/install_ros.sh
 
 # The following block is always re-executed and is NOT cached intentionally.

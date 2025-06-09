@@ -414,7 +414,7 @@ class RosProjectCreator:
                 self._custom_entrypoint = self._custom_entrypoint.expanduser().resolve()
 
                 # if not entrypoint.is_file() or entrypoint.stat().st_size == 0:
-                if not self._custom_entrypoint.exists():
+                if not self._custom_entrypoint.exists() or self._custom_entrypoint.stat().st_size == 0:
                     raise RosProjectCreatorException(
                         f"Custom entrypoint file '{str(self._custom_entrypoint)}' not found"
                     )
@@ -427,7 +427,7 @@ class RosProjectCreator:
             if self._custom_environment is not None:
                 self._custom_environment = self._custom_environment.expanduser().resolve()
 
-                if not self._custom_environment.exists():
+                if not self._custom_environment.exists() or self._custom_environment.stat().st_size == 0:
                     raise RosProjectCreatorException(
                         f"Custom environment file '{str(self._custom_environment)}' not found"
                     )
@@ -465,17 +465,22 @@ class RosProjectCreator:
             dst_path = self._project_dir.joinpath(key).resolve()
 
             item = self._items_to_install[key]
-            relative_src_path = item[0]
+
+            src_path = None
+
+            if item[0] is not None:
+                if item[0].startswith("/"):
+                    src_path = Path(item[0])
+                else:
+                    src_path = self._resources_dir.joinpath(item[0])
+
+                if not src_path.exists():
+                    raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
 
             if len(item) == 1:
                 self._logger.info(f"Creating directory '{dst_path}'")
 
-                if relative_src_path is not None:
-                    src_path = self._resources_dir.joinpath(relative_src_path).resolve()
-
-                    if not src_path.exists():
-                        raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
-
+                if src_path is not None:
                     if not src_path.is_dir():
                         raise RosProjectCreatorException(f"Required resource '{str(src_path)}' is not a directory.")
 
@@ -489,12 +494,7 @@ class RosProjectCreator:
             elif len(item) == 2:
                 self._logger.info(f"Creating file '{dst_path}'")
 
-                if relative_src_path is not None:
-                    src_path = self._resources_dir.joinpath(item[0]).resolve()
-
-                    if not src_path.exists():
-                        raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
-
+                if src_path is not None:
                     if not src_path.is_file():
                         raise RosProjectCreatorException(f"Required resource '{str(src_path)}' is not a file.")
 
@@ -512,15 +512,10 @@ class RosProjectCreator:
             elif len(item) == 3:
                 self._logger.info(f"Creating file '{dst_path}'")
 
-                if relative_src_path is None:
+                if src_path is None:
                     raise RosProjectCreatorException(
                         f"Relative source path can't be empty for element '{str(dst_path)}'."
                     )
-
-                src_path = self._resources_dir.joinpath(item[0]).resolve()
-
-                if not src_path.exists():
-                    raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
 
                 if not src_path.is_file():
                     raise RosProjectCreatorException(f"Required resource '{str(src_path)}' is not a file.")
