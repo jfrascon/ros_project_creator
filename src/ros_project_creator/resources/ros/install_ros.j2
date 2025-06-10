@@ -249,8 +249,8 @@ env_line='[ -f "${HOME}/.environment.sh" ] && . "${HOME}/.environment.sh"'
 
 if ! grep -Fxq "${env_line}" "${img_user_home}/.bashrc"; then
     log "Adding line '${env_line}' to file '${img_user_home}/.bashrc'"
-    sudo -h -u "${img_user}" bash -c 'echo "# --------------------------------------" >> "${img_user_home}/.bashrc"'
-    sudo -h -u "${img_user}" bash -c 'echo "${env_line}" >> "${img_user_home}/.bashrc"'
+    sudo -H -u "${img_user}" bash -c "echo '# --------------------------------------' >> \"${img_user_home}/.bashrc\""
+    sudo -H -u "${img_user}" bash -c "echo \"${env_line}\" >> \"${img_user_home}/.bashrc\""
 else
     log "Line '${env_line}' already exists in file '${img_user_home}/.bashrc'"
 fi
