@@ -501,7 +501,7 @@ class RosProjectCreator:
                     if not dst_path.parent.exists():
                         dst_path.parent.mkdir(parents=True)
 
-                    shutil.copyfile(src_path, dst_path)
+                    shutil.copy2(src_path, dst_path)
                 else:
                     dst_path.touch()
 
