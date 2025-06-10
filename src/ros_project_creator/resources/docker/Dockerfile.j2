@@ -4,7 +4,7 @@
 # The warning 'InvalidDefaultArgInFrom: Default value for ARG ${base_img} results in empty or
 # invalid base image name' can be safely ignored, as this behavior is intentional.
 ARG BASE_IMG
-FROM ${BASE_IMG}
+FROM {{ base_img }}
 
 # The following labels adhere to the OCI Image Specification for standardized metadata.
 # Reference: https://github.com/opencontainers/image-spec/blob/main/annotations.md
@@ -13,10 +13,10 @@ LABEL org.opencontainers.image.title="Project Docker Image" \
     org.opencontainers.image.authors="anon"
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG REQUESTED_USER=non_root
-ARG REQUESTED_USER_HOME=/home/non_root
-ARG ROS_DISTRO=humble
-ARG ROS_VERSION=2
+ARG REQUESTED_USER={{ requested_user }}
+ARG REQUESTED_USER_HOME={{ requested_user_home }}
+ARG ROS_DISTRO={{ ros_distro }}
+ARG ROS_VERSION={{ ros_version }}
 
 USER root
 WORKDIR /

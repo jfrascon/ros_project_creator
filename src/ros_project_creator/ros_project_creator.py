@@ -306,6 +306,11 @@ class RosProjectCreator:
             "docker/Dockerfile": [
                 "docker/Dockerfile.j2",
                 {
+                    "base_img": self._base_img,
+                    "requested_user": self._img_user,
+                    "requested_user_home": str(self._img_user_home),
+                    "ros_distro": self._ros_variant.get_distro(),
+                    "ros_version": self._ros_variant.get_version(),
                     "use_base_img_entrypoint": self._use_base_img_entrypoint,
                     "use_environment": self._use_environment,
                     "extra_ros_env_vars": extra_ros_env_vars,
@@ -320,9 +325,8 @@ class RosProjectCreator:
                     "relpath_to_docker_dir": relpath_to_docker_dir_from_build_script,
                     "relpath_to_context_dir": relpath_to_context_dir_from_build_script,
                     "base_img": self._base_img,
-                    "img_id": self._img_id,
                     "img_user": self._img_user,
-                    "img_user_home": str(self._img_user_home),
+                    "img_id": self._img_id,
                     "ros_distro": self._ros_variant.get_distro(),
                     "ros_version": self._ros_variant.get_version(),
                     "deps_file": relpath_to_deps_file_from_build_script,

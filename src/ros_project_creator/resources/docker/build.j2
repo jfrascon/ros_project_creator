@@ -166,11 +166,8 @@ if __name__ == "__main__":
     # this file is under source control.
 
     base_img = "{{ base_img }}"
-    img_id_to_build = "{{ img_id }}"
     requested_user = "{{ img_user }}"
-    requested_user_home = "{{ img_user_home }}"
-    ros_distro = "{{ ros_distro }}"
-    ros_version = "{{ ros_version }}"
+    img_id_to_build = "{{ img_id }}"
     deps_file = this_file.joinpath("{{ deps_file }}").resolve()
     deps_target_dir = this_file.joinpath("{{ deps_target_dir }}").resolve()
 
@@ -257,17 +254,6 @@ if __name__ == "__main__":
 
     if not args.cache:
         cmd.append("--no-cache")
-
-    build_args = {
-        "BASE_IMG": base_img,
-        "REQUESTED_USER": requested_user,
-        "REQUESTED_USER_HOME": requested_user_home,
-        "ROS_DISTRO": ros_distro,
-        "ROS_VERSION": ros_version,
-    }
-
-    for k, v in build_args.items():
-        cmd += ["--build-arg", f"{k}={v}"]
 
     labels = {
         "org.opencontainers.image.created": datetime.now(timezone.utc).isoformat(),
