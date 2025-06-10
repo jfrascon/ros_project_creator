@@ -12,38 +12,38 @@ log() {
     printf "[%s] %s\n" "$(date --utc '+%Y-%m-%d_%H-%M-%S')" "${message}" >&"${fd}"
 }
 
-ROS_DISTRO="${1}"
-IMG_USER="${2}"
-SRC_ROSDEP_IGNORED_KEY_FILE="${3}"
-PROJECT_SRC_DIR="${4}"
+IMG_USER="${1}"
+ROS_DISTRO="${2}"
+PROJECT_SRC_DIR="${3}"
+SRC_ROSDEP_IGNORED_KEY_FILE="${4}"
 
-[ -z "${ROS_DISTRO}" ] && {
-    log "Error: ROS_DISTRO is not set" 2
-    exit 1
-}
-
-[ -z "${IMG_USER}" ] && {
+if [ -z "${IMG_USER}" ]; then
     log "Error: IMG_USER is not set" 2
     exit 1
-}
+fi
 
-[ ! -d "${PROJECT_SRC_DIR}" ] && {
+if [ -z "${ROS_DISTRO}" ]; then
+    log "Error: ROS_DISTRO is not set" 2
+    exit 1
+fi
+
+if [ -n "${PROJECT_SRC_DIR}" ] && [ ! -d "${PROJECT_SRC_DIR}" ]; then
     log "Error: PROJECT_SRC_DIR '${PROJECT_SRC_DIR}' does not exist" 2
     exit 1
-}
+fi
 
 img_user_entry="$(getent passwd "${IMG_USER}")"
 
-[ -z "${img_user_entry}" ] && {
+if [ -z "${img_user_entry}" ]; then
     log "Error: User '${IMG_USER}' does not exist" 2
     exit 1
-}
+fi
 
 # This script is run by root when building the Docker image.
-[ "$(id --user)" -ne 0 ] && {
+if [ "$(id --user)" -ne 0 ]; then
     log "Error: root user must be active to run the script '$(basename "${BASH_SOURCE[0]}")'" 2
     exit 1
-}
+fi
 
 rosdep_root_dir="/etc/ros/rosdep"
 rosdep_sources_dir="${rosdep_root_dir}/sources.list.d"
@@ -118,10 +118,18 @@ log "Executing rosdep update as root. Ignore the warning about running as root"
 log "rosdep database ownership will be fixed later"
 rosdep update --rosdistro "${ROS_DISTRO}"
 
-log "Installing dependencies for packages in the paths '${PROJECT_SRC_DIR}' and '/opt/ros/${ROS_DISTRO}/share/'"
+if [ -n "${PROJECT_SRC_DIR}"]; then
+    VALID_PATHS=("/opt/ros/${ROS_DISTRO}/share/" "${PROJECT_SRC_DIR}")
+    msg="Installing dependencies for packages in the paths '/opt/ros/${ROS_DISTRO}/share/' and '${PROJECT_SRC_DIR}'"
+else
+    VALID_PATHS=("/opt/ros/${ROS_DISTRO}/share/")
+    msg="Installing dependencies for packages in the path '/opt/ros/${ROS_DISTRO}/share/'"
+fi
+
+log "${msg}"
 # Update cache to ensure the latest package information is available.
 apt-get update
-rosdep install -y --rosdistro "${ROS_DISTRO}" --from-paths "${PROJECT_SRC_DIR}" "/opt/ros/${ROS_DISTRO}/share/" --ignore-src
+rosdep install -y --rosdistro "${ROS_DISTRO}" --from-paths "${VALID_PATHS[@]}" --ignore-src
 
 # Move the rosdep databases to the user home directory, if the IMG_USER is non root.
 if [ "${IMG_USER}" != "root" ]; then

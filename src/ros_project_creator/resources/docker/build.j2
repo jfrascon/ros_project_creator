@@ -166,7 +166,7 @@ if __name__ == "__main__":
     # this file is under source control.
 
     base_img = "{{ base_img }}"
-    requested_user = "{{ img_user }}"
+    img_user = "{{ img_user }}"
     img_id_to_build = "{{ img_id }}"
     deps_file = this_file.joinpath("{{ deps_file }}").resolve()
     deps_target_dir = this_file.joinpath("{{ deps_target_dir }}").resolve()
@@ -179,8 +179,8 @@ if __name__ == "__main__":
         print(f"Error: Invalid Docker image name: '{img_id_to_build}'", file=sys.stderr)
         sys.exit(1)
 
-    if " " in requested_user:
-        print(f"Error: Invalid user argument '{requested_user}'", file=sys.stderr)
+    if " " in img_user:
+        print(f"Error: Invalid user argument '{img_user}'", file=sys.stderr)
         sys.exit(1)
 
     docker_dir = this_file.joinpath("{{relpath_to_docker_dir}}").resolve()
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     specific_log_file = log_dir.joinpath(f"{log_prefix}_specific.log")
 
     print(
-        f"Building the Docker image '{img_id_to_build}' for the project '{{ project_id }}', using the base image '{base_img}', with active user '{requested_user}' and 'ROS{{ ros_version }}-{{ ros_distro }}'"
+        f"Building the Docker image '{img_id_to_build}' for the project '{{ project_id }}', using the base image '{base_img}', with active user '{img_user}' and 'ROS{{ ros_version }}-{{ ros_distro }}'"
     )
     print(f"{docker_ignore_msg}\n")
 

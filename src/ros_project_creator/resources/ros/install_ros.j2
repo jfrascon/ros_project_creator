@@ -110,9 +110,9 @@ sanitize() {
 # Start of the script
 # --------------------------------------------------------------------------------------------------
 
-ROS_DISTRO="${1}"
-ROS_VERSION="${2}"
-IMG_USER="${3}"
+IMG_USER="${1}"
+ROS_DISTRO="${2}"
+ROS_VERSION="${3}"
 ros_versions_str=("ros" "ros2")
 
 # THIS SCRIPT IS RUN BY ROOT WHEN BUILDING THE DOCKER IMAGE.
@@ -249,8 +249,8 @@ env_line='[ -f "${HOME}/.environment.sh" ] && . "${HOME}/.environment.sh"'
 
 if ! grep -Fxq "${env_line}" "${img_user_home}/.bashrc"; then
     log "Adding line '${env_line}' to file '${img_user_home}/.bashrc'"
-    sudo -H -u "${img_user}" bash -c "echo '# --------------------------------------' >> \"${img_user_home}/.bashrc\""
-    sudo -H -u "${img_user}" bash -c "echo \"${env_line}\" >> \"${img_user_home}/.bashrc\""
+    sudo -H -u "${IMG_USER}" bash -c "echo '# --------------------------------------' >> \"${img_user_home}/.bashrc\""
+    sudo -H -u "${IMG_USER}" bash -c "echo \"${env_line}\" >> \"${img_user_home}/.bashrc\""
 else
     log "Line '${env_line}' already exists in file '${img_user_home}/.bashrc'"
 fi

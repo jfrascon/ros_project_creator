@@ -3,7 +3,6 @@
 # No default base_img is provided to ensure the build process fails if no base_img is specified.
 # The warning 'InvalidDefaultArgInFrom: Default value for ARG ${base_img} results in empty or
 # invalid base image name' can be safely ignored, as this behavior is intentional.
-ARG BASE_IMG
 FROM {{ base_img }}
 
 # The following labels adhere to the OCI Image Specification for standardized metadata.
@@ -12,11 +11,10 @@ LABEL org.opencontainers.image.title="Project Docker Image" \
     org.opencontainers.image.description="A Docker image for development and testing" \
     org.opencontainers.image.authors="anon"
 
-ARG DEBIAN_FRONTEND=noninteractive
-ARG REQUESTED_USER={{ requested_user }}
-ARG REQUESTED_USER_HOME={{ requested_user_home }}
-ARG ROS_DISTRO={{ ros_distro }}
-ARG ROS_VERSION={{ ros_version }}
+ENV IMG_USER="{{ img_user }}" \
+    ROS_DISTRO="{{ ros_distro }}" \
+    ROS_VERSION="{{ ros_version }}" \
+    DEBIAN_FRONTEND="noninteractive"
 
 USER root
 WORKDIR /
@@ -25,10 +23,10 @@ WORKDIR /
 # The copied files are lightweight, therefore the size of the associated layer is small.
 # The script install_core.sh is responsible for installing system dependencies.
 COPY --chmod=775 docker/.resources/install_base_system.sh /tmp/
-RUN /tmp/install_base_system.sh "${REQUESTED_USER}" "${REQUESTED_USER_HOME}" && rm -rf /tmp/install_base_system.sh
+RUN /tmp/install_base_system.sh "${IMG_USER}" && rm -rf /tmp/install_base_system.sh
 
 COPY --chmod=775 docker/.resources/install_ros.sh /tmp/
-RUN /tmp/install_ros.sh "${ROS_DISTRO}" "${ROS_VERSION}" "${REQUESTED_USER}" && rm -rf /tmp/install_ros.sh
+RUN /tmp/install_ros.sh "${IMG_USER}" "${ROS_DISTRO}" "${ROS_VERSION}"  && rm -rf /tmp/install_ros.shW
 
 # The following block is always re-executed and is NOT cached intentionally.
 # It uses the --mount=type=bind option to bind the current context to the container, since the context has, most of the
@@ -37,11 +35,10 @@ RUN /tmp/install_ros.sh "${ROS_DISTRO}" "${ROS_VERSION}" "${REQUESTED_USER}" && 
 RUN --mount=type=bind,source=.,target=/tmp/context bash <<'EOF'
 log() { echo "[$(date --utc '+%Y-%m-%d_%H-%M-%S')]" "$@"; }
 
-img_user="${REQUESTED_USER}"
-img_user_entry="$(getent passwd "${img_user}")"
+img_user_entry="$(getent passwd "${IMG_USER}")"
 
 if [ -z "${img_user_entry}" ]; then
-    log "Error: User '${img_user}' not found" >&2
+    log "Error: User '${IMG_USER}' not found" >&2
     exit 1
 fi
 
@@ -102,7 +99,7 @@ src_dir="/tmp/context/src"
 # and execute it.
 cp /tmp/context/docker/.resources/rosdep_init_update.sh /tmp/rosdep_init_update.sh
 chmod 775 /tmp/rosdep_init_update.sh
-/tmp/rosdep_init_update.sh "${ROS_DISTRO}" "${img_user}" "${rosdep_ignored_key_file}" "${src_dir}"
+/tmp/rosdep_init_update.sh "${IMG_USER}" "${ROS_DISTRO}" "${src_dir}" "${rosdep_ignored_key_file}"
 rm -f /tmp/rosdep_init_update.sh
 
 if [ -s /tmp/context/docker/.resources/colcon_mixin_metadata.sh ]; then
@@ -110,7 +107,7 @@ if [ -s /tmp/context/docker/.resources/colcon_mixin_metadata.sh ]; then
     # executable and execute it.
     cp /tmp/context/docker/.resources/colcon_mixin_metadata.sh /tmp/colcon_mixin_metadata.sh
     chmod 775 /tmp/colcon_mixin_metadata.sh
-    /tmp/colcon_mixin_metadata.sh "${img_user}"
+    /tmp/colcon_mixin_metadata.sh "${IMG_USER}"
     rm -f /tmp/colcon_mixin_metadata.sh
 else
     log "No colcon_mixin_metadata.sh script found, skipping colcon mixin metadata installation"
@@ -124,9 +121,9 @@ img_user_pri_group_id="$(echo "${img_user_entry}" | cut -d: -f4)"
 img_user_pri_group="$(getent group "${img_user_pri_group_id}" | cut -d: -f1)"
 img_user_home="$(echo "${img_user_entry}" | cut -d: -f6)"
 
-# Every file and folder in img_user_home must belong to the img_user.
-log "Setting ownership of path '${img_user_home}' to user '${img_user}' (UID '${img_user_id}') and primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}')"
-chown --recursive "${img_user}":"${img_user_pri_group}" "${img_user_home}"
+# Every file and folder in img_user_home must belong to the IMG_USER.
+log "Setting ownership of path '${img_user_home}' to user '${IMG_USER}' (UID '${img_user_id}') and primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}')"
+chown --recursive "${IMG_USER}":"${img_user_pri_group}" "${img_user_home}"
 
 {% if not use_base_img_entrypoint %}
 log "Installing file '/usr/local/bin/entrypoint.sh'" >&2
@@ -140,14 +137,14 @@ log "Installing file '/usr/local/bin/rosbuild.sh'"
 install --owner root --group root --mode 775 /tmp/context/docker/.resources/rosbuild.sh /usr/local/bin/rosbuild.sh
 
 {% if use_environment %}
-# An environment script is installed in the home directory of the '${img_user}'.
+# An environment script is installed in the home directory of the '${IMG_USER}'.
 log "Installing file '${img_user_home}/.environment.sh'"
-install --owner "${img_user}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/.resources/environment.sh "${img_user_home}/.environment.sh"
+install --owner "${IMG_USER}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/.resources/environment.sh "${img_user_home}/.environment.sh"
 {% endif %}
 
 # Optional: install .bash_aliases if present
 if [ -e /tmp/context/docker/.resources/dot_bash_aliases ]; then
-    install --owner "${img_user}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/.resources/dot_bash_aliases "${img_user_home}/.bash_aliases"
+    install --owner "${IMG_USER}" --group "${img_user_pri_group}" --mode 775 /tmp/context/docker/.resources/dot_bash_aliases "${img_user_home}/.bash_aliases"
 fi
 
 log "Removing installation residues from apt cache"
@@ -157,28 +154,18 @@ apt-get clean
 rm -rf /var/lib/apt/lists/* &>/dev/null
 EOF
 
-# Re-declare ARGs to make their values available for expansion in ENV below.
-# This is required even if they were already defined earlier after the FROM.
-ARG DEBIAN_FRONTEND
-ARG REQUESTED_USER
-ARG REQUESTED_USER_HOME
-ARG ROS_DISTRO
-ARG ROS_VERSION
-
 # Configure timezone and localization settings.
 # - TZ: Set the timezone to UTC to ensure consistent time handling across environments.
 # - LC_ALL, LANG, LANGUAGE: Configure localization to US English and UTF-8 encoding, which helps
 #   avoiding issues with character encoding and ensures compatibility with most tools and libraries.
-ENV IMG_USER="${REQUESTED_USER}" \
-    TZ="Etc/UTC" \
+ENV TZ="Etc/UTC" \
     LC_ALL="en_US.UTF-8" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US:en" \
-    DEBIAN_FRONTEND="${DEBIAN_FRONTEND}" \
-    ROS_HOME="${REQUESTED_USER_HOME}/.ros" \
-    ROS_LOG_DIR="${REQUESTED_USER_HOME}/.ros/logs" \
-    ROS_TEST_RESULTS_DIR="${REQUESTED_USER_HOME}/.ros/tests" \
-    ROS_CONFIG_HOME="${REQUESTED_USER_HOME}/.config/ros.org" \
+    ROS_HOME="{{ img_user_home }}/.ros" \
+    ROS_LOG_DIR="{{ img_user_home }}/.ros/logs" \
+    ROS_TEST_RESULTS_DIR="{{ img_user_home }}/.ros/tests" \
+    ROS_CONFIG_HOME="{{ img_user_home }}/.config/ros.org" \
 {{ extra_ros_env_vars }}
 
 USER "${IMG_USER}"

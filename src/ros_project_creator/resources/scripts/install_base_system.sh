@@ -66,17 +66,11 @@ log() {
 # Start execution of the script
 #-----------------------------------------------------------------------------------------------------------------------
 # Requested user to be created in the image.
-REQUESTED_USER="${1}"
-REQUESTED_USER_HOME="${2}"
-requested_user_shell="/bin/bash"
+IMG_USER="${1}"
+img_user_shell="/bin/bash"
 
-if [ -z "${REQUESTED_USER}" ]; then
+if [ -z "${IMG_USER}" ]; then
     log "Error: User not provided" 2
-    exit 1
-fi
-
-if [ -z "${REQUESTED_USER_HOME}" ]; then
-    log "Error: User home not provided" 2
     exit 1
 fi
 
@@ -232,45 +226,37 @@ locale-gen en_US.UTF-8
 # with GID 1000.
 # Reference: https://bugs.launchpad.net/cloud-images/+bug/2005129
 
-# Check if the user '${REQUESTED_USER}' exists
-if ! getent passwd "${REQUESTED_USER}" >/dev/null 2>&1; then
-    if [ "${REQUESTED_USER}" = root ]; then
-        log "Error: User '${REQUESTED_USER}' should already exist in the image"
+# Check if the user '${IMG_USER}' exists
+if ! getent passwd "${IMG_USER}" >/dev/null 2>&1; then
+    if [ "${IMG_USER}" = root ]; then
+        log "Error: User '${IMG_USER}' should already exist in the image"
         exit 1
     fi
 
     # Create the user with the specified home directory and shell. Home is created physically.
-    useradd --home-dir "${REQUESTED_USER_HOME}" --create-home --shell "${requested_user_shell}" "${REQUESTED_USER}"
+    # when no option --home-dir is specified, the home directory is created in /home/<username>.
+    useradd --create-home --shell "${img_user_shell}" "${IMG_USER}"
 
-    img_user_entry="$(getent passwd "${REQUESTED_USER}")"
+    img_user_entry="$(getent passwd "${IMG_USER}")"
     img_user_id="$(echo "${img_user_entry}" | cut -d: -f3)"
     img_user_pri_group_id="$(echo "${img_user_entry}" | cut -d: -f4)"
     img_user_pri_group="$(getent group "${img_user_pri_group_id}" | cut -d: -f1)"
 
-    log "Created user '${REQUESTED_USER}' (UID '${img_user_id}') with primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}')"
+    log "Created user '${IMG_USER}' (UID '${img_user_id}') with primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}')"
 else
     # If the user already exists, check if the home directory and shell match the requested ones.
-    img_user_entry="$(getent passwd "${REQUESTED_USER}")"
+    img_user_entry="$(getent passwd "${IMG_USER}")"
     img_user_id="$(echo "${img_user_entry}" | cut -d: -f3)"
     img_user_pri_group_id="$(echo "${img_user_entry}" | cut -d: -f4)"
     img_user_pri_group="$(getent group "${img_user_pri_group_id}" | cut -d: -f1)"
 
-    img_user_home="$(echo "${img_user_entry}" | cut -d: -f6)"
     img_user_shell="$(echo "${img_user_entry}" | cut -d: -f7)"
 
-    log "User '${REQUESTED_USER}' (UID '${img_user_id}') with primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}') already exists, verifying properties"
+    log "User '${IMG_USER}' (UID '${img_user_id}') with primary group '${img_user_pri_group}' (GID '${img_user_pri_group_id}') already exists, verifying properties"
 
-    if [ "${requested_user_shell}" != "${img_user_shell}" ]; then
-        log "Updating shell of user '${REQUESTED_USER}' (UID '${img_user_id}') from '${img_user_shell}' to '${requested_user_shell}'"
-        usermod --shell "${requested_user_shell}" "${REQUESTED_USER}"
-    fi
-
-    if [ "${REQUESTED_USER_HOME}" != "${img_user_home}" ]; then
-        log "Updating home directory of user '${REQUESTED_USER}' (UID '${img_user_id}') from '${img_user_home}' to '${REQUESTED_USER_HOME}'"
-        mkdir --parents "${REQUESTED_USER_HOME}" # Create the home directory if it does not exist. If it exists, it will not be modified.
-        usermod --home "${REQUESTED_USER_HOME}" --move-home "${REQUESTED_USER}"
-        # Ensure the home directory is owned by the user and group.
-        chown "${REQUESTED_USER}:${img_user_pri_group}" "${REQUESTED_USER_HOME}"
+    if [ "${img_user_shell}" != "${img_user_shell}" ]; then
+        log "Updating shell of user '${IMG_USER}' (UID '${img_user_id}') from '${img_user_shell}' to '${img_user_shell}'"
+        usermod --shell "${img_user_shell}" "${IMG_USER}"
     fi
 fi
 
@@ -282,31 +268,31 @@ for group in dialout sudo video; do
 
     if [ -z "${group_entry}" ]; then
         log "Warning: group '${group}' does not exist!"
-    elif ! id -nG "${REQUESTED_USER}" | grep --quiet --word-regexp "${group}"; then
+    elif ! id -nG "${IMG_USER}" | grep --quiet --word-regexp "${group}"; then
         group_id="$(echo "${group_entry}" | cut -d: -f3)"
-        log "Adding user '${REQUESTED_USER}' (UID '${img_user_id}') to group '${group}' (GID '${group_id}')"
-        usermod --append --groups "${group}" "${REQUESTED_USER}"
+        log "Adding user '${IMG_USER}' (UID '${img_user_id}') to group '${group}' (GID '${group_id}')"
+        usermod --append --groups "${group}" "${IMG_USER}"
     else
-        log "User '${REQUESTED_USER}' (UID '${img_user_id}') is already a member of group '${group}' (GID '${group_id}')"
+        log "User '${IMG_USER}' (UID '${img_user_id}') is already a member of group '${group}' (GID '${group_id}')"
     fi
 done
 
 # Set password for the non-root user.
 # The non-root user can run commands with sudo without a password.
-if [ "${REQUESTED_USER}" != root ]; then
+if [ "${IMG_USER}" != root ]; then
     # Set password equal to username
-    log "Setting password for user '${REQUESTED_USER}' (UID '${img_user_id}') to '${REQUESTED_USER}'"
-    password="${REQUESTED_USER}"
-    echo "${REQUESTED_USER}:${password}" | chpasswd
+    log "Setting password for user '${IMG_USER}' (UID '${img_user_id}') to '${IMG_USER}'"
+    password="${IMG_USER}"
+    echo "${IMG_USER}:${password}" | chpasswd
 
     # The following block is disabled and is left here for reference.
     # It is not recommended to configure passwordless sudo in a Docker image, as it can lead to
     # security issues.
 
     # Configure passwordless sudo.
-    # log "Configuring passwordless sudo for user '${REQUESTED_USER}' (UID '${img_user_id}')"
-    # sudoers_file="/etc/sudoers.d/${REQUESTED_USER}"
-    # echo "${REQUESTED_USER} ALL=(ALL) NOPASSWD:ALL" >"${sudoers_file}"
+    # log "Configuring passwordless sudo for user '${IMG_USER}' (UID '${img_user_id}')"
+    # sudoers_file="/etc/sudoers.d/${IMG_USER}"
+    # echo "${IMG_USER} ALL=(ALL) NOPASSWD:ALL" >"${sudoers_file}"
     # chmod 0440 "${sudoers_file}"
 
     # # Check if the sudoers file is valid.
@@ -316,27 +302,29 @@ if [ "${REQUESTED_USER}" != root ]; then
     # fi
 fi
 
+img_user_home="$(echo "${img_user_entry}" | cut -d: -f6)"
+
 # Create basic folders for configuration and binaries.
 dirs_to_create=(
-    "${REQUESTED_USER_HOME}/.config"
-    "${REQUESTED_USER_HOME}/.local/bin"
-    "${REQUESTED_USER_HOME}/.local/lib"
-    "${REQUESTED_USER_HOME}/.local/share"
+    "${img_user_home}/.config"
+    "${img_user_home}/.local/bin"
+    "${img_user_home}/.local/lib"
+    "${img_user_home}/.local/share"
 )
 
 for dir in "${dirs_to_create[@]}"; do
     if [ ! -d "${dir}" ]; then
         log "Creating directory '${dir}'"
-        install --directory --mode 755 --owner "${REQUESTED_USER}" --group "${img_user_pri_group}" "${dir}"
+        install --directory --mode 755 --owner "${IMG_USER}" --group "${img_user_pri_group}" "${dir}"
     else
         log "Directory '${dir}' already exists"
     fi
 done
 
 # Create the .bashrc file if it does not exist.
-if [ ! -s "${REQUESTED_USER_HOME}/.bashrc" ]; then
-    log "File '${REQUESTED_USER_HOME}/.bashrc' does not exist. Copying file /etc/skel/.bashrc to '${REQUESTED_USER_HOME}/.bashrc'"
-    sudo -H -u "${REQUESTED_USER}" cp --verbose /etc/skel/.bashrc "${REQUESTED_USER_HOME}/.bashrc"
+if [ ! -s "${img_user_home}/.bashrc" ]; then
+    log "File '${img_user_home}/.bashrc' does not exist. Copying file /etc/skel/.bashrc to '${img_user_home}/.bashrc'"
+    sudo -H -u "${IMG_USER}" cp --verbose /etc/skel/.bashrc "${img_user_home}/.bashrc"
 fi
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -344,10 +332,10 @@ fi
 #-----------------------------------------------------------------------------------------------------------------------
 python_packages=(argcomplete black cmake-format pre-commit)
 
-log "Installing Python packages for the user '${REQUESTED_USER}': ${python_packages[*]}"
+log "Installing Python packages for the user '${IMG_USER}': ${python_packages[*]}"
 
 # Asegurar permisos correctos sobre el home (solo si no es root)
-if [ "${REQUESTED_USER}" != root ]; then
+if [ "${IMG_USER}" != root ]; then
     # The '--break-system-packages', described in PEP 668, was introduced in Python 3.11+ from Debian Bookworm and
     # Ubuntu 24.04 (Noble Numbat), onwards. PEP 668 prevents installing packages with  'pip install --user' in
     # system-managed environments. To work around this, the '--break-system-packages' flag is used to allow the
@@ -366,7 +354,7 @@ if [ "${REQUESTED_USER}" != root ]; then
     # To avoid warning messages when installing packages we set the environment variable PATH to include
     # the user's local bin directory. Next, an ENV variable is set to include the user's local bin
     # directory in the PATH variable, in the Dockerfile.
-    sudo -H -u "${REQUESTED_USER}" env PATH="${REQUESTED_USER_HOME}/.local/bin:${PATH}" \
+    sudo -H -u "${IMG_USER}" env PATH="${img_user_home}/.local/bin:${PATH}" \
         python3 -m pip install --no-cache-dir --user ${flag_break} ${python_packages}
 else
     python3 -m pip install --no-cache-dir ${python_packages}
