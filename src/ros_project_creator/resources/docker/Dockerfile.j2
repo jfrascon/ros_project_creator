@@ -26,7 +26,7 @@ COPY --chmod=775 docker/.resources/install_base_system.sh /tmp/
 RUN /tmp/install_base_system.sh "${IMG_USER}" && rm -rf /tmp/install_base_system.sh
 
 COPY --chmod=775 docker/.resources/install_ros.sh /tmp/
-RUN /tmp/install_ros.sh "${IMG_USER}" "${ROS_DISTRO}" "${ROS_VERSION}"  && rm -rf /tmp/install_ros.shW
+RUN /tmp/install_ros.sh "${IMG_USER}" "${ROS_DISTRO}" "${ROS_VERSION}" && rm -rf /tmp/install_ros.sh
 
 # The following block is always re-executed and is NOT cached intentionally.
 # It uses the --mount=type=bind option to bind the current context to the container, since the context has, most of the
