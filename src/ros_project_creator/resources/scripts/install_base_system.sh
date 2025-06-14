@@ -55,7 +55,7 @@ log() {
     local fd="${2:-1}" # default to 1 (stdout) if not provided
 
     # Validate that fd is either 1 (stdout) or 2 (stderr)
-    if [[ "${fd}" != "1" && "${fd}" != "2" ]]; then
+    if [ "${fd}" != "1" ] && [ "${fd}" != "2" ]; then
         fd=1
     fi
 
@@ -67,6 +67,7 @@ log() {
 #-----------------------------------------------------------------------------------------------------------------------
 # Requested user to be created in the image.
 IMG_USER="${1}"
+INSTALL_MESA_PACKAGES_SCRIPT="${2}"
 img_user_shell="/bin/bash"
 
 if [ -z "${IMG_USER}" ]; then
@@ -181,6 +182,11 @@ packages=(
 )
 
 install_packages "${packages[@]}"
+
+# Install mesa packages if the installation script is provided.
+if [ -s "${INSTALL_MESA_PACKAGES_SCRIPT}" ]; then
+    bash "${INSTALL_MESA_PACKAGES_SCRIPT}"
+fi
 
 # Since Ubuntu 18.04 onwards, python3 is the default python command.
 update-alternatives --install /usr/bin/python python /usr/bin/python3 100

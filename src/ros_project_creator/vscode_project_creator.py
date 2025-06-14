@@ -29,8 +29,10 @@ class VscodeProjectCreator:
         ros_distro: str,
         img_id: str,
         img_user: str,
+        img_user_home: Path,
         workspace_dir: Path,
         img_workspace_dir: Path,
+        use_host_nvidia_driver: bool = False,
         use_console_log: bool = True,
         log_file: str = "",
         log_level: str = "DEBUG",
@@ -40,14 +42,20 @@ class VscodeProjectCreator:
             ros_distro (str): ROS distro to use (e.g. 'humble')
             img_id (str): ID of the Docker image that VSCode will use to create a container
             img_user (str): User to use inside the container
+            img_user_home (Path): Home directory of the user inside the container (e.g. '/home/user')
             workspace_dir (Path): Path to the project directory (e.g. '/path/to/robproj')
             img_workspace_dir (Path): Path to the workspace in the image (e.g. '/home/user/workspaces/robproj')
+            use_host_nvidia_driver (bool): If True, use the host's NVIDIA driver. Default is False.
             use_console_log (bool): If True, log to console. Default is True.
             log_file (str): File to log output. Default is "" (no file).
             log_level (str): Logging level. Default is "DEBUG".
         Raises:
             Exception: If any of the arguments are invalid or if the resources directory does not exist.
         """
+
+        # The img_user_home is injected since, even though, usually home paths meet the pattern
+        # '/home/<user>', it may not be the case in some images, because it is not a requirement
+        # to meet that pattern.
 
         # The constructor may raise an Exception. It is not wrapped in a try-except block
         # because the exception handler logs the error. However, if the logger's construction
@@ -71,16 +79,33 @@ class VscodeProjectCreator:
             img_user = Utilities.clean_str(img_user)
             Utilities.assert_non_empty(img_user, "Image user must be a non-empty string")
 
-            if not workspace_dir:
-                raise Exception("Workspace path must be provided")
+            # The paths on the image side, in the docker-compose file, must be absolute paths.
+            # The img_datasets_dir and the img_ssh_dir will be created from the img_user_home path,
+            # so we need the img_user_home to be an absolute path.
+            if not img_user_home:
+                raise Exception("Image user home path must be provided")
 
-            # If the workspace directory does not exist, it does not matter, it will be creater later, in the run
-            # method.
+            if not img_user_home.is_absolute():
+                raise Exception("Image user home path must be an absolute path")
+
+            img_datasets_dir = img_user_home.joinpath("datasets")
+            img_ssh_dir = img_user_home.joinpath(".ssh")
+
+            # The workspace_dir field can't be None. It does not matter if it is an absolute or
+            # relative path, i.e., as long as the user provides a path. It is the responsibility
+            # of the user to provide the path, where the vscode files will be created.
+            # If the workspace directory does not exist, it does not matter, it will be creater
+            # later.
+            if not workspace_dir:
+                raise Exception("Image workspace path must be provided")
+
+            workspace_dir = workspace_dir.expanduser().resolve()
 
             if not img_workspace_dir:
                 raise Exception("Image workspace path must be provided")
 
-            img_user_home = Path("/root") if img_user == "root" else Path(f"/home/{img_user}")
+            if not img_workspace_dir.is_absolute():
+                raise Exception("Image workspace path must be an absolute path")
 
             # Get git config for the user running the project configuration tool and write it to the docker-compose
             # file, in the volumes section.
@@ -125,10 +150,11 @@ class VscodeProjectCreator:
                     {
                         "service": service,
                         "img_id": img_id,
-                        "workspace_dir": workspace_dir.resolve(),
-                        "img_workspace_dir": img_workspace_dir.resolve(),
-                        "img_datasets_dir": img_user_home.joinpath("datasets"),
-                        "img_ssh_dir": img_user_home.joinpath(".ssh"),
+                        "use_host_nvidia_driver": use_host_nvidia_driver,
+                        "workspace_dir": workspace_dir,
+                        "img_workspace_dir": img_workspace_dir,
+                        "img_datasets_dir": img_datasets_dir,
+                        "img_ssh_dir": img_ssh_dir,
                         "use_git": use_git,
                         "gitconfig_file": gitconfig_file,
                         "img_gitconfig_file": img_user_home.joinpath(".gitconfig"),

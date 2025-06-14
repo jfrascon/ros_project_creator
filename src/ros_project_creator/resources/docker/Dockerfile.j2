@@ -22,8 +22,13 @@ WORKDIR /
 # Using the pattern COPY+RUN we can benefit from Docker's build cache.
 # The copied files are lightweight, therefore the size of the associated layer is small.
 # The script install_core.sh is responsible for installing system dependencies.
+{% if use_host_nvidia_driver %}
 COPY --chmod=775 docker/.resources/install_base_system.sh /tmp/
-RUN /tmp/install_base_system.sh "${IMG_USER}" && rm -rf /tmp/install_base_system.sh
+RUN /tmp/install_base_system.sh "${IMG_USER}" "" && rm -rf /tmp/install_base_system.sh
+{% else %}
+COPY --chmod=775 docker/.resources/install_base_system.sh docker/.resources/install_mesa_packages.sh /tmp/
+RUN /tmp/install_base_system.sh "${IMG_USER}" /tmp/install_mesa_packages.sh && rm -rf /tmp/install_base_system.sh  /tmp/install_mesa_packages.sh
+{% endif %}
 
 COPY --chmod=775 docker/.resources/install_ros.sh /tmp/
 RUN /tmp/install_ros.sh "${IMG_USER}" "${ROS_DISTRO}" "${ROS_VERSION}" && rm -rf /tmp/install_ros.sh

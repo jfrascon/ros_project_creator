@@ -41,6 +41,7 @@ class RosProjectCreator:
         img_id: Optional[str],
         use_base_img_entrypoint=False,
         use_environment: bool = True,
+        use_host_nvidia_driver: bool = False,
         use_vscode_project: bool = False,
         use_pre_commit: bool = True,
         use_console_log: bool = True,
@@ -165,6 +166,7 @@ class RosProjectCreator:
 
             self._use_base_img_entrypoint = use_base_img_entrypoint
             self._use_environment = use_environment
+            self._use_host_nvidia_driver = use_host_nvidia_driver
 
             # Check if the git binary exists in the system.
             self._check_git_binary_existance()
@@ -186,8 +188,10 @@ class RosProjectCreator:
                     self._ros_variant.get_distro(),
                     self._img_id,
                     self._img_user,
+                    self._img_user_home,
                     self._project_dir,
                     self._img_workspace_dir,
+                    self._use_host_nvidia_driver,
                     use_console_log,
                     log_file,
                     log_level,
@@ -302,6 +306,7 @@ class RosProjectCreator:
                     "img_user_home": str(self._img_user_home),
                     "ros_distro": self._ros_variant.get_distro(),
                     "ros_version": self._ros_variant.get_version(),
+                    "use_host_nvidia_driver": self._use_host_nvidia_driver,
                     "use_base_img_entrypoint": self._use_base_img_entrypoint,
                     "use_environment": self._use_environment,
                     "extra_ros_env_vars": extra_ros_env_vars,
@@ -330,6 +335,7 @@ class RosProjectCreator:
                 {
                     "service": "appcont",
                     "img_id": self._img_id,
+                    "use_host_nvidia_driver": self._use_host_nvidia_driver,
                     "workspace_dir": f"~/workspaces/{self._project_id}",
                     "img_workspace_dir": str(self._img_workspace_dir),
                     "img_datasets_dir": str(self._img_datasets_dir),
@@ -411,6 +417,12 @@ class RosProjectCreator:
             self._items_to_install["docker/.resources/environment.sh"] = [
                 f"ros/environment_ros{self._ros_variant.get_version()}.j2",
                 {"ros_distro": self._ros_variant.get_distro()},
+                True,
+            ]
+
+        if not self._use_host_nvidia_driver:
+            self._items_to_install["docker/.resources/install_mesa_packages.sh"] = [
+                "scripts/install_default_mesa_packages.sh",
                 True,
             ]
 

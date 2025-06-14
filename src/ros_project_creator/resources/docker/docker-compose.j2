@@ -9,6 +9,11 @@ services:
     privileged: false
     cap_add:
       - NET_ADMIN # Be able to create network devices inside the container
+    {% if use_host_nvidia_driver %}
+    runtime: nvidia
+    # Ref: https://docs.nvidia.com/deeplearning/frameworks/user-guide/index.html#setincshmem
+    shm_size: 2g
+    {% endif %}
     volumes:
       # +------------------+
       # | Project mappings |
@@ -42,5 +47,9 @@ services:
       - QT_X11_NO_MITSHM=1
       - TERM=$TERM
       - XAUTHORITY=/tmp/.cookies.xauth
+      {% if use_host_nvidia_driver %}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      {% endif %}
       - EXT_UID={{ ext_uid }}
       - EXT_UPGID={{ ext_upgid }}
