@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
         if shutil.which("rv") is None:
             print("Command 'rv' not found in PATH, skipping dependency import")
-            print("Installation instructions: https://github.com/ErickKramer/ripvcs?tab=readme-ov-file#-installation")
+            print("Installation instructions for the command 'rv' available at: https://github.com/ErickKramer/ripvcs?tab=readme-ov-file#-installation")
             return
 
         print(f"Importing dependencies from the file '{deps_file}' into the path '{deps_target_dir}'")
