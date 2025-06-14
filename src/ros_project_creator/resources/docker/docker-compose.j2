@@ -39,7 +39,9 @@ services:
       {% endif %}
     devices:
       - /dev/bus/usb:/dev/bus/usb
+      {% if not use_host_nvidia_driver %}
       - /dev/dri:/dev/dri
+      {% endif %}
     #device_cgroup_rules:
       #- "c 189:* rmw"
     environment:
