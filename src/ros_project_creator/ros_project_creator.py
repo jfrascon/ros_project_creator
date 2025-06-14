@@ -39,9 +39,7 @@ class RosProjectCreator:
         base_img: str,
         img_user: Optional[str],
         img_id: Optional[str],
-        custom_entrypoint: Optional[Path],
         use_base_img_entrypoint=False,
-        custom_environment: Optional[Path] = None,
         use_environment: bool = True,
         use_vscode_project: bool = False,
         use_pre_commit: bool = True,
@@ -165,15 +163,8 @@ class RosProjectCreator:
                     "followed by lowercase letters, numbers, underscores, or dashes."
                 )
 
-            self._custom_entrypoint = custom_entrypoint
             self._use_base_img_entrypoint = use_base_img_entrypoint
             self._use_environment = use_environment
-            self._custom_environment = custom_environment
-
-            if self._custom_entrypoint is not None and self._use_base_img_entrypoint:
-                raise RosProjectCreatorException(
-                    "custom_entrypoint and use_base_img_entrypoint are mutually exclusive arguments."
-                )
 
             # Check if the git binary exists in the system.
             self._check_git_binary_existance()
@@ -414,38 +405,14 @@ class RosProjectCreator:
             ]
 
         if not self._use_base_img_entrypoint:
-            if self._custom_entrypoint is not None:
-                self._custom_entrypoint = self._custom_entrypoint.expanduser().resolve()
-
-                # if not entrypoint.is_file() or entrypoint.stat().st_size == 0:
-                if not self._custom_entrypoint.exists() or self._custom_entrypoint.stat().st_size == 0:
-                    raise RosProjectCreatorException(
-                        f"Custom entrypoint file '{str(self._custom_entrypoint)}' not found"
-                    )
-
-                self._items_to_install["docker/entrypoint.sh"] = [str(self._custom_entrypoint), True]
-            else:
-                self._items_to_install["docker/entrypoint.sh"] = ["docker/entrypoint.sh", True]
+            self._items_to_install["docker/entrypoint.sh"] = ["docker/entrypoint.sh", True]
 
         if self._use_environment:
-            if self._custom_environment is not None:
-                self._custom_environment = self._custom_environment.expanduser().resolve()
-
-                if not self._custom_environment.exists() or self._custom_environment.stat().st_size == 0:
-                    raise RosProjectCreatorException(
-                        f"Custom environment file '{str(self._custom_environment)}' not found"
-                    )
-
-                self._items_to_install["docker/.resources/environment.sh"] = [
-                    str(self._custom_environment),
-                    True,
-                ]
-            else:
-                self._items_to_install["docker/.resources/environment.sh"] = [
-                    f"ros/environment_ros{self._ros_variant.get_version()}.j2",
-                    {"ros_distro": self._ros_variant.get_distro()},
-                    True,
-                ]
+            self._items_to_install["docker/.resources/environment.sh"] = [
+                f"ros/environment_ros{self._ros_variant.get_version()}.j2",
+                {"ros_distro": self._ros_variant.get_distro()},
+                True,
+            ]
 
     def _initializate_git_repo(self) -> str:
         cmd = ["git", "init", "--initial-branch=main"]

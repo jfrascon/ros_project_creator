@@ -59,34 +59,16 @@ def main():
             help="ID of the resulting Docker image (e.g. 'robproj:humble'). If not set, defaults to '<project-id>:latest'",
         )
 
-        entrypoint_group = parser.add_mutually_exclusive_group()
-
-        entrypoint_group.add_argument(
+        parser.add_argument(
             "--use-base-img-entrypoint",
             action="store_true",
-            help="The image will inherit the base image's entrypoint, if any. Do not use this option if you set a custom entrypoint",
+            help="The image will inherit the base image's entrypoint, if any",
         )
 
-        entrypoint_group.add_argument(
-            "--entrypoint",
-            type=str,
-            metavar="ENTRYPOINT_SCRIPT",
-            help="Path to a custom entrypoint script to include in the Docker image (replaces the default entrypoint script)",
-        )
-
-        environment_group = parser.add_mutually_exclusive_group()
-
-        environment_group.add_argument(
+        parser.add_argument(
             "--no-environment",
             action="store_true",
             help="Do not use an environment script. Do not use this option if you set a custom environment script",
-        )
-
-        environment_group.add_argument(
-            "--environment",
-            type=str,
-            metavar="ENVIRONMENT_SCRIPT",
-            help="Path to a custom environment script to include in the Docker image (replaces the default environment script)",
         )
 
         parser.add_argument("--no-vscode", action="store_true", help="Do not create VSCode project")
@@ -110,22 +92,6 @@ def main():
         argcomplete.autocomplete(parser)
         args = parser.parse_args()
 
-        if args.entrypoint:
-            entrypoint = Path(args.entrypoint).expanduser().resolve()
-
-            if not entrypoint.is_file():
-                raise FileNotFoundError(f"Custom entrypoint file '{entrypoint}' not found.")
-        else:
-            entrypoint = None
-
-        if args.environment:
-            environment = Path(args.environment).expanduser().resolve()
-
-            if not environment.is_file():
-                raise FileNotFoundError(f"Custom environment file '{environment}' not found.")
-        else:
-            environment = None
-
         RosProjectCreator(
             args.project_id,
             Path(args.project_dir),
@@ -133,10 +99,8 @@ def main():
             args.base_img,
             args.img_user,
             args.img_id,
-            entrypoint,
             args.use_base_img_entrypoint,
-            environment,
-            not args.no_environment,  # parameter is use_environment, so it is inverted
+            not args.no_environment,  # parameter is use_environment_script, so it is inverted
             not args.no_vscode,  # parameter is use_vscode_project, so it is inverted
             not args.no_pre_commit,  # parameter is used_pre_commit, so it is inverted
             not args.no_console_log,  # parameter is used_console_log, so it is inverted
