@@ -40,7 +40,9 @@ if __name__ == "__main__":
 
         if shutil.which("rv") is None:
             print("Command 'rv' not found in PATH, skipping dependency import")
-            print("Installation instructions for the command 'rv' available at: https://github.com/ErickKramer/ripvcs?tab=readme-ov-file#-installation")
+            print(
+                "Installation instructions for the command 'rv' available at: https://github.com/ErickKramer/ripvcs?tab=readme-ov-file#-installation"
+            )
             return
 
         print(f"Importing dependencies from the file '{deps_file}' into the path '{deps_target_dir}'")
@@ -187,16 +189,16 @@ if __name__ == "__main__":
     dockerfile = docker_dir.joinpath("Dockerfile")
 
     if not dockerfile.is_file():
-        print(f"Error: File '{dockerfile.resolve()}' is required")
+        print(f"Error: File '{str(dockerfile)}' is required")
         sys.exit(1)
 
     context_dir = this_file.joinpath("{{relpath_to_context_dir}}").resolve()
 
     if not context_dir.exists():
-        print(f"Error: Directory '{context_dir}' does not exist")
+        print(f"Error: Directory '{str(context_dir)}' does not exist")
         sys.exit(1)
-    elif not os.path.isdir(context_dir):
-        print(f"Error: Path '{context_dir}' is not a directory")
+    elif not context_dir.is_dir():
+        print(f"Error: Path '{str(context_dir)}' is not a directory")
         sys.exit(1)
 
     src_dockerignore = docker_dir.joinpath("dockerignore")
@@ -210,12 +212,12 @@ if __name__ == "__main__":
     docker_ignore_msg = None
 
     if dst_dockerignore_exists:
-        docker_ignore_msg = f"The build process will use the dockerignore file '{dst_dockerignore.resolve()}'"
+        docker_ignore_msg = f"The build process will use the dockerignore file '{str(dst_dockerignore)}'"
     elif src_dockerignore_exists:
         try:
             shutil.copyfile(src_dockerignore, dst_dockerignore)
             dockerignore_copied = True
-            docker_ignore_msg = f"The build process will use the dockerignore file '{src_dockerignore.resolve()}'"
+            docker_ignore_msg = f"The build process will use the dockerignore file '{str(src_dockerignore)}'"
         except Exception as e:
             print(f"Error: {e}")
             sys.exit(1)
@@ -266,7 +268,7 @@ if __name__ == "__main__":
         cmd += ["--label", f"{k}={v}"]
 
     cmd.extend(["--tag", img_id_to_build])
-    cmd.append(str(context_dir.resolve()))
+    cmd.append(str(context_dir))
 
     log_dir = Path("/tmp")
     img_id_sanitized = img_id_to_build.replace(":", "_").replace("/", "_")
