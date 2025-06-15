@@ -118,7 +118,7 @@ log "Executing rosdep update as root. Ignore the warning about running as root"
 log "rosdep database ownership will be fixed later"
 rosdep update --rosdistro "${ROS_DISTRO}"
 
-if [ -n "${PROJECT_SRC_DIR}"]; then
+if [ -n "${PROJECT_SRC_DIR}" ]; then
     VALID_PATHS=("/opt/ros/${ROS_DISTRO}/share/" "${PROJECT_SRC_DIR}")
     msg="Installing dependencies for packages in the paths '/opt/ros/${ROS_DISTRO}/share/' and '${PROJECT_SRC_DIR}'"
 else
