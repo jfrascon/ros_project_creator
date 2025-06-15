@@ -73,7 +73,7 @@ if [ "${IMG_USER}" != "root" ]; then
             sudo -H -u "${IMG_USER}" mv --verbose "${dst_item}" "${bak_item}"
         fi
 
-        log "Copying item '${src_item}' into '${dst_item}'"
+        log "Moving item '${src_item}' into '${dst_item}'"
 
         recursive=""
 
@@ -81,10 +81,7 @@ if [ "${IMG_USER}" != "root" ]; then
             recursive="--recursive"
         fi
 
-        cp --verbose ${recursive} "${src_item}" "${dst_item}"
+        mv --verbose "${src_item}" "${dst_item}"
         chown ${recursive} "${img_user_id}:${img_user_pri_group_id}" "${dst_item}"
-
-        log "Removing item '${src_item}'"
-        rm --verbose --recursive --force "${src_item}"
     done
 fi

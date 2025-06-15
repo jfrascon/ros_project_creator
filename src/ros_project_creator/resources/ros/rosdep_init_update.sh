@@ -61,7 +61,7 @@ if [ -s "${SRC_ROSDEP_IGNORED_KEY_FILE}" ]; then
     dst_rosdep_ignored_key_file="${rosdep_root_dir}/rosdep_ignored_keys.yaml"
     rosdep_ignored_keys_list_file="${rosdep_sources_dir}/00-rosdep-ignored-key-file-list.list"
 
-    log "rosdep ignored keys provided in the file "${SRC_ROSDEP_IGNORED_KEY_FILE}""
+    log "Keys to ignore by rosdep provided in the file "${SRC_ROSDEP_IGNORED_KEY_FILE}""
 
     # Check if there is no file with exclusions for rosdep yet.
     if [ ! -s "${dst_rosdep_ignored_key_file}" ]; then
@@ -151,11 +151,8 @@ if [ "${IMG_USER}" != "root" ]; then
             sudo -H -u "${IMG_USER}" mv --verbose "${dst_item}" "${bak_item}"
         fi
 
-        log "Copying item '${src_item}' into '${dst_item}'"
-        cp --verbose --recursive "${src_item}" "${dst_item}"
+        log "Moving item '${src_item}' into '${dst_item}'"
+        mv --verbose "${src_item}" "${dst_item}"
         chown --recursive "${img_user_id}:${img_user_pri_group_id}" "${dst_item}"
-
-        log "Removing item '${src_item}'"
-        rm --verbose --recursive --force "${src_item}"
     done
 fi
