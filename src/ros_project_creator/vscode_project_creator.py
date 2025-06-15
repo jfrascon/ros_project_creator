@@ -210,13 +210,9 @@ class VscodeProjectCreator:
             # If the item[0] is None, it means that the key, that can be a file or a directory, must
             # be created, not copied from a resource.
             src_path = None
-            resource_path_str = item[0]
 
-            if resource_path_str is not None:
-                if resource_path_str.startswith("/"):
-                    src_path = Path(resource_path_str)
-                else:
-                    src_path = self._resources_dir.joinpath(resource_path_str)
+            if item[0] is not None:
+                src_path = self._resources_dir.joinpath(item[0])
 
                 if not src_path.exists():
                     raise VscodeProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")

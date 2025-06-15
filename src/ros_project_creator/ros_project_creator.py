@@ -447,17 +447,25 @@ class RosProjectCreator:
 
             item = self._items_to_install[key]
 
+            # If the item[0] is None, it means that the key, that can be a file or a directory, must
+            # be created, not copied from a resource.
             src_path = None
 
             if item[0] is not None:
-                if item[0].startswith("/"):
-                    src_path = Path(item[0])
-                else:
-                    src_path = self._resources_dir.joinpath(item[0])
+                src_path = self._resources_dir.joinpath(item[0])
 
                 if not src_path.exists():
                     raise RosProjectCreatorException(f"Required resource '{str(src_path)}' does not exist.")
 
+            # len = 1 -> directory
+            #    src_path is None -> create an empty directory
+            #    src_path is not None -> copy the directory recursively
+            # len = 2 -> file with permissions
+            #    src_path is None -> create an empty file with permissions
+            #    src_path is not None -> copy the file with permissions
+            # len = 3 -> file with Jinja2 rendering and permissions
+            #    src_path is None -> raise an exception, not allowed
+            #    src_path is not None -> copy the file with Jinja2 rendering and permissions
             if len(item) == 1:
                 self._logger.info(f"Creating directory '{dst_path}'")
 
