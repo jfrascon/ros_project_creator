@@ -196,8 +196,6 @@ class RosProjectCreator:
                     log_file,
                     log_level,
                 )
-            else:
-                self._vscode_project_creator = None
 
             self._logger.info(self._initializate_git_repo())
 
