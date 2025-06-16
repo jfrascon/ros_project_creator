@@ -194,11 +194,8 @@ if __name__ == "__main__":
 
     context_dir = this_file.joinpath("{{relpath_to_context_dir}}").resolve()
 
-    if not context_dir.exists():
-        print(f"Error: Directory '{str(context_dir)}' does not exist")
-        sys.exit(1)
-    elif not context_dir.is_dir():
-        print(f"Error: Path '{str(context_dir)}' is not a directory")
+    if not context_dir.is_dir():
+        print(f"Error: Directory '{str(context_dir)}' is required")
         sys.exit(1)
 
     src_dockerignore = docker_dir.joinpath("dockerignore")
