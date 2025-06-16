@@ -3,12 +3,12 @@ services:
   {{ service }}:
     image: {{ img_id }}
     user: root
-    tty: true
-    stdin_open: true
-    network_mode: host
     privileged: false
     cap_add:
       - NET_ADMIN # Be able to create network devices inside the container
+    network_mode: host
+    tty: true
+    stdin_open: true
     {% if use_host_nvidia_driver %}
     runtime: nvidia
     # Ref: https://docs.nvidia.com/deeplearning/frameworks/user-guide/index.html#setincshmem
