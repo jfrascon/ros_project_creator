@@ -119,17 +119,20 @@ log "rosdep database ownership will be fixed later"
 rosdep update --rosdistro "${ROS_DISTRO}"
 
 if [ -n "${PROJECT_SRC_DIR}" ]; then
-    VALID_PATHS=("/opt/ros/${ROS_DISTRO}/share/" "${PROJECT_SRC_DIR}")
+    paths=("/opt/ros/${ROS_DISTRO}/share/" "${PROJECT_SRC_DIR}")
     msg="Installing dependencies for packages in the paths '/opt/ros/${ROS_DISTRO}/share/' and '${PROJECT_SRC_DIR}'"
 else
-    VALID_PATHS=("/opt/ros/${ROS_DISTRO}/share/")
+    paths=("/opt/ros/${ROS_DISTRO}/share/")
     msg="Installing dependencies for packages in the path '/opt/ros/${ROS_DISTRO}/share/'"
 fi
 
 log "${msg}"
+# Avoid rosdep from installing recommended and suggested packages.
+echo 'APT::Install-Recommends "0";' >  /etc/apt/apt.conf.d/99norecommends
+echo 'APT::Install-Suggests   "0";' >> /etc/apt/apt.conf.d/99norecommends
 # Update cache to ensure the latest package information is available.
 apt-get update
-rosdep install -y --rosdistro "${ROS_DISTRO}" --from-paths "${VALID_PATHS[@]}" --ignore-src
+rosdep install -y --rosdistro "${ROS_DISTRO}" --from-paths "${paths[@]}" --ignore-src
 
 # Move the rosdep databases to the user home directory, if the IMG_USER is non root.
 if [ "${IMG_USER}" != "root" ]; then
