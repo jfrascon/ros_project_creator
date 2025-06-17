@@ -56,6 +56,12 @@ log() {
     printf "[%s] %s\n" "$(date --utc '+%Y-%m-%d_%H-%M-%S')" "${message}" >&"${fd}"
 }
 
+# This script is run by root when building the Docker image.
+if [ "$(id --user)" -ne 0 ]; then
+    log "Error: root user must be active to run the script '$(basename "${BASH_SOURCE[0]}")'" 2
+    exit 1
+fi
+
 apt-get update # Required to load the cache in the build container
 apt-get install --yes --no-install-recommends python3-software-properties software-properties-common
 apt-get -f install --yes
