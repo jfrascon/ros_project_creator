@@ -76,10 +76,10 @@ if [ -z "${IMG_USER}" ]; then
 fi
 
 # This script is run by root when building the Docker image.
-[ "$(id --user)" -ne 0 ] && {
+if [ "$(id --user)" -ne 0 ]; then
     log "Error: root user must be active to run the script '$(basename "${BASH_SOURCE[0]}")'" 2
     exit 1
-}
+fi
 
 # Update the package list and upgrade all packages to their latest versions.
 apt-get update
