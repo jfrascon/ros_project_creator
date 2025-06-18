@@ -73,9 +73,9 @@ add-apt-repository --yes universe
 apt-get update
 apt-get dist-upgrade --yes
 
-. /etc/os-release
-
 apt-get install --yes --no-install-recommends curl gpg
+
+. /etc/os-release
 
 # + ------------------------+
 # | Install system packages |
@@ -113,19 +113,25 @@ apt-get install --yes --no-install-recommends curl gpg
 # if [ "${num_distros}" -eq 0 ]; then
 #     log "No ROS distribution found. Please install a ROS distribution before running the script '$(basename "${BASH_SOURCE[0]}")'"
 #     exit 1
-# elif [ "${num_distros}" -eq 1 ]; then
-#     install_packages ros-"${ros_distro}"-<package>
-# else # multiple distributions found
-#     log "Warning: Multiple ROS distributions detected"
+# fi
+#
+# if [ "${num_distros}" -gt 1 ]; then
+#     log "Error: Multiple ROS distributions detected"
 #     exit 1
 # fi
+#
+# install_packages ros-"${ros_distro}"-<package>
 
 # +--------------------------------------------------------------------------------------------------------------------+
-# FOR EXAMPLE, IN CASE YOU WANT TO INSTALL PACKAGES FROM GAZEBO CLASSIC, UNCOMMENT THE LINES BELOW
-# AND ADD THE REQUIRED GAZEBO-CLASSIC PACKAGES INTO THE PROPER package.xml FILE OF THE NECESSARY PACKAGE.
-# curl -fsSL https://packages.osrfoundation.org/gazebo.key | gpg --dearmor -o /etc/apt/keyrings/gazebo_classic.gpg
-# echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/gazebo_classic.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable ${VERSION_CODENAME} main" | tee /etc/apt/sources.list.d/gazebo_classic.list >/dev/null
+# FOR EXAMPLE, IN CASE YOU WANT TO INSTALL PACKAGES FROM GAZEBO (NON-CLASSIC), UNCOMMENT THE LINES BELOW.
+# Ref: https://gazebosim.org/docs/harmonic/ros_installation/
+# curl https://packages.osrfoundation.org/gazebo.gpg --output /etc/apt/keyrings/gazebo.gpg
+# echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/gazebo.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable ${VERSION_CODENAME} main" | sudo tee /etc/apt/sources.list.d/gazebo.list >/dev/null
 # apt-get update
+# apt-get install --yes --no-install-recommends ros-${ros_distro}-ros-gz
+# Ref: https://gazebosim.org/docs/harmonic/install_ubuntu/
+# apt-get install --yes --no-install-recommends gz-<gazebo_distro>
+
 # +--------------------------------------------------------------------------------------------------------------------+
 
 # +---------------------+
