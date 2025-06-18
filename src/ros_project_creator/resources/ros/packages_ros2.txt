@@ -46,3 +46,4 @@ ros-${ROS_DISTRO}-topic-monitor
 ros-${ROS_DISTRO}-topic-tools
 ros-${ROS_DISTRO}-urdf-launch
 ros-${ROS_DISTRO}-xacro
+ros-dev-tools

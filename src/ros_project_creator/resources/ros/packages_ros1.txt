@@ -48,3 +48,4 @@ ros-${ROS_DISTRO}-tf2-server
 ros-${ROS_DISTRO}-tf2-tools
 ros-${ROS_DISTRO}-urdf-geometry-parser
 ros-${ROS_DISTRO}-urdfdom-py
+ros-dev-tools
