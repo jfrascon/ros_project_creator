@@ -336,7 +336,7 @@ fi
 #-----------------------------------------------------------------------------------------------------------------------
 # Install Python packages for the user that are commonly used for development
 #-----------------------------------------------------------------------------------------------------------------------
-python_packages=(argcomplete black cmake-format pre-commit)
+python_packages=(argcomplete ruff cmake-format pre-commit)
 
 log "Installing Python packages for the user '${IMG_USER}': ${python_packages[*]}"
 

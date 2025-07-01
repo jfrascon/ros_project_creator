@@ -1,0 +1,65 @@
+# ==============================================================================
+# Ruff configuration (formatter + linter)
+# ==============================================================================
+# This section configures Ruff, a high-performance Python linter and formatter.
+# All settings related to how Ruff analyzes and formats your code go under this table.
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+# Use single quotes for ordinary strings
+quote-style = "single"
+# Keep classic 4-space indentation (alternatives: "tab")
+indent-style = "space"
+# Disable Black’s “magic trailing comma” auto-wrapping behaviour
+skip-magic-trailing-comma = true
+# Always write LF line endings, regardless of the OS that runs the formatter
+line-ending = "lf"
+
+# The 'lint' table configures the linting (static code analysis) behavior.
+[tool.ruff.lint]
+
+# 'select' specifies an explicit list of rule codes/prefixes to enable. Ruff will only
+# check for rules in this list, ignoring all others. This provides a clear,
+# defined set of standards for the project.
+#
+# The selected rule sets are:
+#   - E:  pycodestyle Errors. These are important style violations from PEP 8,
+#           like indentation errors or incorrect spacing around operators.
+#   - W:  pycodestyle Warnings. These are less critical style violations from
+#           PEP 8, like trailing whitespace or blank lines.
+#   - F:  Pyflakes rules. These are crucial for catching LOGICAL ERRORS in code,
+#           such as unused imports, undefined variables, or variables that are
+#           defined but never used. This is one of the most valuable rule sets.
+#   - Q:  flake8-quotes rules. This set is specifically for enforcing a
+#           consistent quote style (single vs. double quotes) in your code.
+#   - B:  likely bugs / bad practices             (flake8-bugbear)
+#   - C4: redundant comprehensions simplification (flake8-comprehensions)
+#   - I:  import sorting                          (isort rules, Ruff-native)
+#   - UP: upgrade syntax to newer Python          (pyupgrade)
+select = ["E", "W", "F", "Q", "B", "C4", "I", "UP"]
+
+# Ignore PEP 8 slice-spacing clash with Black (still flagged by pycodestyle)
+extend-ignore = ["E203"]
+
+# This section allows for fine-tuning the behavior of specific rule sets
+# that were enabled in the 'select' list above.
+# Configuration for the 'flake8-quotes' rules (which have the prefix "Q").
+[tool.ruff.lint.flake8-quotes]
+
+# Enforces the use of single quotes for all inline strings (strings that do not
+# span multiple lines). When the code is formatted or fixed (e.g., on save),
+# Ruff will automatically convert "double-quoted strings" to 'single-quoted strings'.
+# Possible values: "single", "double".
+inline-quotes = "single"
+
+# Enforces the use of double quotes for docstrings (e.g., """My Docstring""").
+# This is the recommended convention according to PEP 257 (Docstring Conventions)
+# and is a common, strongly-held practice in the Python community.
+# Possible values: "single", "double".
+docstring-quotes = "double"
+
+# Note: You could also set `multiline-quotes` to control the quote style for
+# non-docstring, multi-line strings. If unset, it typically defaults to the
+# style of `inline-quotes`. For example:
+# multiline-quotes = "single"

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
 import os
-from pathlib import Path
 import pwd
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
 from ros_project_creator.colorizedlogs import ColorizedLogger
-
 from ros_project_creator.ros_variant import RosVariant
 from ros_project_creator.utilities import Utilities
 from ros_project_creator.vscode_project_creator import VscodeProjectCreator
@@ -45,8 +44,8 @@ class RosProjectCreator:
         use_vscode_project: bool = False,
         use_pre_commit: bool = True,
         use_console_log: bool = True,
-        log_file: str = "",
-        log_level: str = "DEBUG",
+        log_file: str = '',
+        log_level: str = 'DEBUG',
     ):
         """
         Initializes the RosProjectCreator class.
@@ -70,7 +69,7 @@ class RosProjectCreator:
         # because the exception handler logs the error. However, if the logger's construction
         # fails, logging statements cannot be executed.
         self._logger = ColorizedLogger(
-            name="RosProjectCreator", use_console_log=use_console_log, log_file=log_file, log_level=log_level
+            name='RosProjectCreator', use_console_log=use_console_log, log_file=log_file, log_level=log_level
         )
 
         try:
@@ -80,13 +79,13 @@ class RosProjectCreator:
             Utilities.assert_non_empty(self._project_id, "Project's id must be a non-empty string")
 
             if project_dir is None:
-                raise RosProjectCreatorException("Project directory must be provided")
+                raise RosProjectCreatorException('Project directory must be provided')
 
             project_dir_str = str(project_dir).strip()
 
             # If the project_dir contains only whitespace, then the project_dir is set to the
             # current working directory (Path()).
-            if project_dir_str == "":
+            if project_dir_str == '':
                 self._project_dir = Path()
             else:
                 # Remove leading and trailing whitespace, so paths like
@@ -98,10 +97,10 @@ class RosProjectCreator:
 
             # Get home of the user who actually invoked the script (even under sudo)
             # When running under sudo, the environment variable SUDO_USER is set to the user who invoked sudo.
-            real_user = os.getenv("SUDO_USER") or os.getenv("USER")
+            real_user = os.getenv('SUDO_USER') or os.getenv('USER')
 
             if not real_user:
-                raise RosProjectCreatorException("Unable to determine the active user")
+                raise RosProjectCreatorException('Unable to determine the active user')
 
             user_home = Path(pwd.getpwnam(real_user).pw_dir).resolve()
 
@@ -111,7 +110,7 @@ class RosProjectCreator:
             except ValueError:
                 raise RosProjectCreatorException(
                     f"Error: Project directory is '{str(self._project_dir)}'. Project directory must be inside the home of the active user '{user_home}'"
-                )
+                ) from None
 
             # If the project dir already exist, do nothing, print message and exit.
             # The user must decide how to proceed manually (deleting the existing project dir and re-create the project,
@@ -120,48 +119,48 @@ class RosProjectCreator:
             if self._project_dir.exists():
                 raise RosProjectCreatorException(
                     f"Project dir '{str(self._project_dir)}' already exists. "
-                    f"Remove it manually or choose a different project directory."
+                    f'Remove it manually or choose a different project directory.'
                 )
 
-            self._resources_dir = Path(__file__).parent.joinpath("resources")
+            self._resources_dir = Path(__file__).parent.joinpath('resources')
             Utilities.assert_dir_existence(self._resources_dir, f"Path '{self._resources_dir.resolve()}' is required")
 
-            ros_variant_yaml_file = self._resources_dir.joinpath("ros", "ros_variants.yaml")
+            ros_variant_yaml_file = self._resources_dir.joinpath('ros', 'ros_variants.yaml')
             self._ros_variant = RosVariant(ros_distro, ros_variant_yaml_file)
 
             self._base_img = Utilities.clean_str(base_img)
-            Utilities.assert_non_empty(self._base_img, "Base image must be a non-empty string")
+            Utilities.assert_non_empty(self._base_img, 'Base image must be a non-empty string')
 
             if not Utilities.is_valid_docker_image_name(self._base_img):
                 raise RosProjectCreatorException(
                     f"Base image '{self._base_img}' is not a valid Docker image name. "
-                    "Valid names must start with a lowercase letter or number, "
-                    "followed by lowercase letters, numbers, underscores, or dashes."
+                    'Valid names must start with a lowercase letter or number, '
+                    'followed by lowercase letters, numbers, underscores, or dashes.'
                 )
 
             self._img_user = Utilities.clean_str(img_user)
-            Utilities.assert_non_empty(self._img_user, "Image user must be a non-empty string")
+            Utilities.assert_non_empty(self._img_user, 'Image user must be a non-empty string')
 
-            if " " in self._img_user:
-                raise RosProjectCreatorException("Image user must not contain spaces")
+            if ' ' in self._img_user:
+                raise RosProjectCreatorException('Image user must not contain spaces')
 
-            if self._img_user == "root":
-                self._img_user_home = Path(f"/{self._img_user}")
+            if self._img_user == 'root':
+                self._img_user_home = Path(f'/{self._img_user}')
             else:
-                self._img_user_home = Path(f"/home/{self._img_user}")
+                self._img_user_home = Path(f'/home/{self._img_user}')
 
-            self._img_workspace_dir = self._img_user_home.joinpath("workspace")
-            self._img_datasets_dir = self._img_user_home.joinpath("datasets")
-            self._img_ssh_dir = self._img_user_home.joinpath(".ssh")
+            self._img_workspace_dir = self._img_user_home.joinpath('workspace')
+            self._img_datasets_dir = self._img_user_home.joinpath('datasets')
+            self._img_ssh_dir = self._img_user_home.joinpath('.ssh')
 
             # If img_id is not provided, it is set to the default value.
-            self._img_id = Utilities.clean_str(img_id) or f"{self._project_id}:latest"
+            self._img_id = Utilities.clean_str(img_id) or f'{self._project_id}:latest'
 
             if not Utilities.is_valid_docker_image_name(self._img_id):
                 raise RosProjectCreatorException(
                     f"Image ID '{self._img_id}' is not a valid Docker image name. "
-                    "Valid names must start with a lowercase letter or number, "
-                    "followed by lowercase letters, numbers, underscores, or dashes."
+                    'Valid names must start with a lowercase letter or number, '
+                    'followed by lowercase letters, numbers, underscores, or dashes.'
                 )
 
             self._use_base_img_entrypoint = use_base_img_entrypoint
@@ -185,6 +184,7 @@ class RosProjectCreator:
             # Create VSCode project if requested.
             if use_vscode_project:
                 self._vscode_project_creator = VscodeProjectCreator(
+                    self._project_id,
                     self._ros_variant.get_distro(),
                     self._img_id,
                     self._img_user,
@@ -202,34 +202,34 @@ class RosProjectCreator:
             if use_pre_commit:
                 self._logger.info(self._install_pre_commit_config())
         except RosProjectCreatorException as e:
-            self._logger.error(f"{e}")
+            self._logger.error(f'{e}')
             raise
 
     def _check_git_binary_existance(self) -> None:
         # Check git binary existence.
-        if not shutil.which("git"):
-            raise RosProjectCreatorException("Git binary not found in the system")
+        if not shutil.which('git'):
+            raise RosProjectCreatorException('Git binary not found in the system')
 
     def _check_pre_commit_binary_existance(self) -> None:
         # Check pre-commit binary existence.
-        if not shutil.which("pre-commit"):
-            raise RosProjectCreatorException("pre-commit binary not found in the system")
+        if not shutil.which('pre-commit'):
+            raise RosProjectCreatorException('pre-commit binary not found in the system')
 
     def _create_items_to_install(self) -> None:
-        docker_dir = self._project_dir.joinpath("docker")
+        docker_dir = self._project_dir.joinpath('docker')
 
         # Relative path to the build script from the project directory.
-        relative_build_script = Path("docker/build.py")
+        relative_build_script = Path('docker/build.py')
         # Path to the build script.
         build_script = self._project_dir.joinpath(relative_build_script)
 
         # Relative path to the deps file from the project directory.
-        relative_deps_file = Path("deps.repos")
+        relative_deps_file = Path('deps.repos')
         # Path to the deps file.
         deps_file = self._project_dir.joinpath(relative_deps_file)
 
         # Path where the dependency packages will be installed.
-        relative_deps_targer_dir = Path("src/0_deps")
+        relative_deps_targer_dir = Path('src/0_deps')
         deps_target_dir = self._project_dir.joinpath(relative_deps_targer_dir)
 
         # The context directory is the project directory.
@@ -238,14 +238,14 @@ class RosProjectCreator:
         relpath_to_deps_file_from_build_script = os.path.relpath(str(deps_file), str(build_script))
         relpath_to_deps_target_dir_from_build_script = os.path.relpath(str(deps_target_dir), str(build_script))
 
-        ros_packages_file = self._resources_dir.joinpath(f"ros/packages_ros{self._ros_variant.get_version()}.txt")
+        ros_packages_file = self._resources_dir.joinpath(f'ros/packages_ros{self._ros_variant.get_version()}.txt')
         Utilities.assert_file_existence(ros_packages_file, f"File '{str(ros_packages_file)}' not found")
         ros_packages = Utilities.read_file(ros_packages_file)
 
         if not ros_packages.strip():
             raise RosProjectCreatorException(f"File '{str(ros_packages_file)}' is empty.")
 
-        extra_ros_env_vars_file = self._resources_dir.joinpath(f"ros/env_vars_ros{self._ros_variant.get_version()}.txt")
+        extra_ros_env_vars_file = self._resources_dir.joinpath(f'ros/env_vars_ros{self._ros_variant.get_version()}.txt')
         Utilities.assert_file_existence(extra_ros_env_vars_file, f"File '{str(extra_ros_env_vars_file)}' not found")
         extra_ros_env_vars = Utilities.read_file(extra_ros_env_vars_file)
 
@@ -283,149 +283,132 @@ class RosProjectCreator:
         # permissions (True) or not (False).
 
         self._items_to_install = {
-            ".gitignore": ["git/dot_gitignore", False],
-            ".gitlab": ["git/gitlab"],
-            f"{str(relative_deps_file)}": ["deps/deps.repos", False],
-            "docker/.resources/deduplicate_path.sh": ["scripts/deduplicate_path.sh", True],
-            "docker/.resources/dot_bash_aliases.sh": ["scripts/dot_bash_aliases", True],
-            "docker/.resources/install_base_system.sh": ["scripts/install_base_system.sh", True],
-            "docker/.resources/install_ros.sh": [
-                "ros/install_ros.j2",
-                {"use_environment": self._use_environment, "ros_packages": ros_packages},
+            '.gitignore': ['git/dot_gitignore', False],
+            '.gitlab': ['git/gitlab'],
+            f'{str(relative_deps_file)}': ['deps/deps.repos', False],
+            'docker/.resources/deduplicate_path.sh': ['scripts/deduplicate_path.sh', True],
+            'docker/.resources/dot_bash_aliases.sh': ['scripts/dot_bash_aliases', True],
+            'docker/.resources/install_base_system.sh': ['scripts/install_base_system.sh', True],
+            'docker/.resources/install_ros.sh': [
+                'ros/install_ros.j2',
+                {'use_environment': self._use_environment, 'ros_packages': ros_packages},
                 True,
             ],
-            "docker/.resources/rosbuild.sh": [f"ros/ros{self._ros_variant.get_version()}build.sh", True],
-            "docker/.resources/rosdep_init_update.sh": ["ros/rosdep_init_update.sh", True],
-            "docker/Dockerfile": [
-                "docker/Dockerfile.j2",
+            'docker/.resources/rosbuild.sh': [f'ros/ros{self._ros_variant.get_version()}build.sh', True],
+            'docker/.resources/rosdep_init_update.sh': ['ros/rosdep_init_update.sh', True],
+            'docker/Dockerfile': [
+                'docker/Dockerfile.j2',
                 {
-                    "base_img": self._base_img,
-                    "img_user": self._img_user,
-                    "img_user_home": str(self._img_user_home),
-                    "ros_distro": self._ros_variant.get_distro(),
-                    "ros_version": self._ros_variant.get_version(),
-                    "use_host_nvidia_driver": self._use_host_nvidia_driver,
-                    "use_base_img_entrypoint": self._use_base_img_entrypoint,
-                    "use_environment": self._use_environment,
-                    "extra_ros_env_vars": extra_ros_env_vars,
+                    'base_img': self._base_img,
+                    'img_user': self._img_user,
+                    'img_user_home': str(self._img_user_home),
+                    'ros_distro': self._ros_variant.get_distro(),
+                    'ros_version': self._ros_variant.get_version(),
+                    'use_host_nvidia_driver': self._use_host_nvidia_driver,
+                    'use_base_img_entrypoint': self._use_base_img_entrypoint,
+                    'use_environment': self._use_environment,
+                    'extra_ros_env_vars': extra_ros_env_vars,
                 },
                 False,
             ],
             str(relative_build_script): [
-                "docker/build.j2",
+                'docker/build.j2',
                 {
-                    "description": f"Builds the Docker image '{self._img_id}' for the project '{self._project_id}', using the base image '{self._base_img}', with active user '{self._img_user}' and 'ROS{self._ros_variant.get_version()}-{self._ros_variant.get_distro()}'",
-                    "project_id": self._project_id,
-                    "relpath_to_docker_dir": relpath_to_docker_dir_from_build_script,
-                    "relpath_to_context_dir": relpath_to_context_dir_from_build_script,
-                    "base_img": self._base_img,
-                    "img_user": self._img_user,
-                    "img_id": self._img_id,
-                    "ros_distro": self._ros_variant.get_distro(),
-                    "ros_version": self._ros_variant.get_version(),
-                    "deps_file": relpath_to_deps_file_from_build_script,
-                    "deps_target_dir": relpath_to_deps_target_dir_from_build_script,
+                    'description': f"Builds the Docker image '{self._img_id}' for the project '{self._project_id}', using the base image '{self._base_img}', with active user '{self._img_user}' and 'ROS{self._ros_variant.get_version()}-{self._ros_variant.get_distro()}'",
+                    'project_id': self._project_id,
+                    'relpath_to_docker_dir': relpath_to_docker_dir_from_build_script,
+                    'relpath_to_context_dir': relpath_to_context_dir_from_build_script,
+                    'base_img': self._base_img,
+                    'img_user': self._img_user,
+                    'img_id': self._img_id,
+                    'ros_distro': self._ros_variant.get_distro(),
+                    'ros_version': self._ros_variant.get_version(),
+                    'deps_file': relpath_to_deps_file_from_build_script,
+                    'deps_target_dir': relpath_to_deps_target_dir_from_build_script,
                 },
                 True,
             ],
-            "docker/docker-compose.yaml": [
-                "docker/docker-compose.j2",
+            'docker/docker-compose.yaml': [
+                'docker/docker-compose.j2',
                 {
-                    "service": "appcont",
-                    "img_id": self._img_id,
-                    "use_host_nvidia_driver": self._use_host_nvidia_driver,
-                    "workspace_dir": f"~/workspaces/{self._project_id}",
-                    "img_workspace_dir": str(self._img_workspace_dir),
-                    "img_datasets_dir": str(self._img_datasets_dir),
-                    "img_ssh_dir": str(self._img_ssh_dir),
-                    "use_git": False,
-                    "ext_uid": "1000",
-                    "ext_upgid": "1000",
+                    'service': 'appcont',
+                    'img_id': self._img_id,
+                    'use_host_nvidia_driver': self._use_host_nvidia_driver,
+                    'workspace_dir': f'~/workspaces/{self._project_id}',
+                    'img_workspace_dir': str(self._img_workspace_dir),
+                    'img_datasets_dir': str(self._img_datasets_dir),
+                    'img_ssh_dir': str(self._img_ssh_dir),
+                    'use_git': False,
+                    'ext_uid': '1000',
+                    'ext_upgid': '1000',
                 },
                 False,
             ],
-            "docker/dockerignore": ["docker/dot_dockerignore", False],
-            "install_deps.sh": ["deps/install_deps.sh", True],
-            "README.md": [
-                "README.j2",
-                {
-                    "project_id": self._project_id,
-                },
-                False,
-            ],
-            "src/.clang-format": ["clang/dot_clang-format", False],
-            "src/.clang-tidy": ["clang/dot_clang-tidy", False],
+            'docker/dockerignore': ['docker/dot_dockerignore', False],
+            'install_deps.sh': ['deps/install_deps.sh', True],
+            'pyproject.toml': ['pyproject.toml', False],
+            'README.md': ['README.j2', {'project_id': self._project_id}, False],
+            'src/.clang-format': ['clang/dot_clang-format', False],
+            'src/.clang-tidy': ['clang/dot_clang-tidy', False],
             str(relative_deps_targer_dir): [None],
-            "src/bringup/CMakeLists.txt": [
-                f"ros/bringup_CMakeLists_ros{self._ros_variant.get_version()}.j2",
-                {
-                    "c_version": self._ros_variant.get_c_version(),
-                    "cpp_version": self._ros_variant.get_cpp_version(),
-                },
+            'src/bringup/CMakeLists.txt': [
+                f'ros/bringup_CMakeLists_ros{self._ros_variant.get_version()}.j2',
+                {'c_version': self._ros_variant.get_c_version(), 'cpp_version': self._ros_variant.get_cpp_version()},
                 False,
             ],
-            "src/bringup/config": [None],
-            "src/bringup/launch": [None],
-            "src/bringup/package.xml": [
-                f"ros/bringup_package_ros{self._ros_variant.get_version()}.xml",
+            'src/bringup/config': [None],
+            'src/bringup/launch': [None],
+            'src/bringup/package.xml': [f'ros/bringup_package_ros{self._ros_variant.get_version()}.xml', False],
+            'src/bringup/rviz': [None],
+            'src/bringup/scripts': [None],
+            'src/simulation/CMakeLists.txt': [
+                f'ros/simulation_CMakeLists_ros{self._ros_variant.get_version()}.j2',
+                {'c_version': self._ros_variant.get_c_version(), 'cpp_version': self._ros_variant.get_cpp_version()},
                 False,
             ],
-            "src/bringup/rviz": [None],
-            "src/bringup/scripts": [None],
-            "src/simulation/CMakeLists.txt": [
-                f"ros/simulation_CMakeLists_ros{self._ros_variant.get_version()}.j2",
-                {
-                    "c_version": self._ros_variant.get_c_version(),
-                    "cpp_version": self._ros_variant.get_cpp_version(),
-                },
-                False,
-            ],
-            "src/simulation/config": [None],
-            "src/simulation/launch": [None],
-            "src/simulation/package.xml": [
-                f"ros/simulation_package_ros{self._ros_variant.get_version()}.xml",
-                False,
-            ],
-            "src/simulation/rviz": [None],
-            "src/simulation/scripts": [None],
+            'src/simulation/config': [None],
+            'src/simulation/launch': [None],
+            'src/simulation/package.xml': [f'ros/simulation_package_ros{self._ros_variant.get_version()}.xml', False],
+            'src/simulation/rviz': [None],
+            'src/simulation/scripts': [None],
         }
 
         if self._use_pre_commit:
-            self._items_to_install[".pre-commit-config.yaml"] = ["git/dot_pre-commit-config.yaml", False]
+            self._items_to_install['.pre-commit-config.yaml'] = ['git/dot_pre-commit-config.yaml', False]
 
         if self._ros_variant.get_version() == 1:
-            self._items_to_install[".catkin_tools/profiles/default/config.yaml"] = [
-                "ros/catkin_config_ros1.yaml",
+            self._items_to_install['.catkin_tools/profiles/default/config.yaml'] = [
+                'ros/catkin_config_ros1.yaml',
                 False,
             ]
         else:
-            self._items_to_install["docker/.resources/colcon_mixin_metadata.sh"] = [
-                "ros/colcon_mixin_metadata.sh",
+            self._items_to_install['docker/.resources/colcon_mixin_metadata.sh'] = [
+                'ros/colcon_mixin_metadata.sh',
                 True,
             ]
-            self._items_to_install["docker/.resources/rosdep_ignored_keys.yaml"] = [
-                "ros/rosdep_ignored_keys_ros2.yaml",
+            self._items_to_install['docker/.resources/rosdep_ignored_keys.yaml'] = [
+                'ros/rosdep_ignored_keys_ros2.yaml',
                 False,
             ]
 
         if not self._use_base_img_entrypoint:
-            self._items_to_install["docker/entrypoint.sh"] = ["docker/entrypoint.sh", True]
+            self._items_to_install['docker/entrypoint.sh'] = ['docker/entrypoint.sh', True]
 
         if self._use_environment:
-            self._items_to_install["docker/.resources/environment.sh"] = [
-                f"ros/environment_ros{self._ros_variant.get_version()}.j2",
-                {"ros_distro": self._ros_variant.get_distro()},
+            self._items_to_install['docker/.resources/environment.sh'] = [
+                f'ros/environment_ros{self._ros_variant.get_version()}.j2',
+                {'ros_distro': self._ros_variant.get_distro()},
                 True,
             ]
 
         if not self._use_host_nvidia_driver:
-            self._items_to_install["docker/.resources/install_mesa_packages.sh"] = [
-                "scripts/install_default_mesa_packages.sh",
+            self._items_to_install['docker/.resources/install_mesa_packages.sh'] = [
+                'scripts/install_default_mesa_packages.sh',
                 True,
             ]
 
     def _initializate_git_repo(self) -> str:
-        cmd = ["git", "init", "--initial-branch=main"]
+        cmd = ['git', 'init', '--initial-branch=main']
         cwd = self._project_dir
         self._logger.info(f"Executing command '{' '.join(cmd)}' in '{cwd}'")
         result = subprocess.run(
@@ -528,7 +511,7 @@ class RosProjectCreator:
                 jinja2_template = jinja2_env.get_template(src_path.name)
                 rendered_text = jinja2_template.render(context)
 
-                with dst_path.open("w") as f:
+                with dst_path.open('w') as f:
                     f.write(rendered_text)
 
                 if item[2]:
@@ -537,7 +520,7 @@ class RosProjectCreator:
                     dst_path.chmod(0o664)
 
     def _install_pre_commit_config(self) -> str:
-        cmd = ["pre-commit", "install"]
+        cmd = ['pre-commit', 'install']
         cwd = self._project_dir
         self._logger.info(f"Executing command '{' '.join(cmd)}' in '{cwd}'...")
         result = subprocess.run(

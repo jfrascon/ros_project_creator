@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
+import os
 import shutil
 from pathlib import Path
-import os
 
 from jinja2 import Environment, FileSystemLoader
 
 from ros_project_creator.colorizedlogs import ColorizedLogger
-
 from ros_project_creator.ros_variant import RosVariant
 from ros_project_creator.utilities import Utilities
 
@@ -19,13 +18,13 @@ class VscodeProjectCreatorException(Exception):
 
 
 class VscodeProjectCreator:
-
     # ==========================================================================
     # non-static private methods
     # ==========================================================================
 
     def __init__(
         self,
+        project_id: str,
         ros_distro: str,
         img_id: str,
         img_user: str,
@@ -34,8 +33,8 @@ class VscodeProjectCreator:
         img_workspace_dir: Path,
         use_host_nvidia_driver: bool = False,
         use_console_log: bool = True,
-        log_file: str = "",
-        log_level: str = "DEBUG",
+        log_file: str = '',
+        log_level: str = 'DEBUG',
     ):
         """Creates a new VSCode project based on templates.
         Args:
@@ -61,37 +60,40 @@ class VscodeProjectCreator:
         # because the exception handler logs the error. However, if the logger's construction
         # fails, logging statements cannot be executed.
         self._logger = ColorizedLogger(
-            name="VscodeProjectCreator", use_console_log=use_console_log, log_file=log_file, log_level=log_level
+            name='VscodeProjectCreator', use_console_log=use_console_log, log_file=log_file, log_level=log_level
         )
         try:
             # Check the resource dir exits.
-            self._resources_dir = Path(__file__).parent.joinpath("resources")
+            self._resources_dir = Path(__file__).parent.joinpath('resources')
             Utilities.assert_dir_existence(self._resources_dir, f"Path '{str(self._resources_dir)}' is required")
+
+            self._project_id = Utilities.clean_str(project_id)
+            Utilities.assert_non_empty(project_id, 'Project id must be a non-empty string')
 
             # Get the the ros_variant (ros_distro, ros_version, cpp_version, c_version) associated to the passed
             # ros_distro.
-            ros_variant_yaml_file = self._resources_dir.joinpath("ros/ros_variants.yaml")
+            ros_variant_yaml_file = self._resources_dir.joinpath('ros/ros_variants.yaml')
             self._ros_variant = RosVariant(ros_distro, ros_variant_yaml_file)
 
             self._img_id = Utilities.clean_str(img_id)
-            Utilities.assert_non_empty(img_id, "Image id must be a non-empty string")
+            Utilities.assert_non_empty(img_id, 'Image id must be a non-empty string')
 
             self._img_user = Utilities.clean_str(img_user)
-            Utilities.assert_non_empty(img_user, "Image user must be a non-empty string")
+            Utilities.assert_non_empty(img_user, 'Image user must be a non-empty string')
 
             # The paths on the image side, in the docker-compose file, must be absolute paths.
             # The img_datasets_dir and the img_ssh_dir will be created from the img_user_home path,
             # so we need the img_user_home to be an absolute path.
             if not img_user_home:
-                raise Exception("Image user home path must be provided")
+                raise Exception('Image user home path must be provided')
 
             if not img_user_home.is_absolute():
-                raise Exception("Image user home path must be an absolute path")
+                raise Exception('Image user home path must be an absolute path')
 
             self._img_user_home = img_user_home
 
-            self._img_datasets_dir = self._img_user_home.joinpath("datasets")
-            self._img_ssh_dir = self._img_user_home.joinpath(".ssh")
+            self._img_datasets_dir = self._img_user_home.joinpath('datasets')
+            self._img_ssh_dir = self._img_user_home.joinpath('.ssh')
 
             # The workspace_dir field can't be None. It does not matter if it is an absolute or
             # relative path, i.e., as long as the user provides a path. It is the responsibility
@@ -99,15 +101,15 @@ class VscodeProjectCreator:
             # If the workspace directory does not exist, it does not matter, it will be creater
             # later.
             if not workspace_dir:
-                raise Exception("Image workspace path must be provided")
+                raise Exception('Image workspace path must be provided')
 
             self._workspace_dir = workspace_dir.expanduser().resolve()
 
             if not img_workspace_dir:
-                raise Exception("Image workspace path must be provided")
+                raise Exception('Image workspace path must be provided')
 
             if not img_workspace_dir.is_absolute():
-                raise Exception("Image workspace path must be an absolute path")
+                raise Exception('Image workspace path must be an absolute path')
 
             self._img_workspace_dir = img_workspace_dir
             self._use_host_nvidia_driver = use_host_nvidia_driver
@@ -115,8 +117,8 @@ class VscodeProjectCreator:
             # Get git config for the user running the project configuration tool and write it to the docker-compose
             # file, in the volumes section.
             home = Path.home()
-            global_gitconfig_file = home.joinpath(".gitconfig")
-            xdg_gitconfig_file = home.joinpath(".config/git/config")
+            global_gitconfig_file = home.joinpath('.gitconfig')
+            xdg_gitconfig_file = home.joinpath('.config/git/config')
 
             # Check ~/.gitconfig first, as it has higher priority.
             if global_gitconfig_file.is_file():
@@ -131,72 +133,76 @@ class VscodeProjectCreator:
                 self._use_git = False
                 self._gitconfig_file = None
 
-            if self._ros_variant.get_version() == "1":
-                self._build_release_cmd = "rosbuild.sh"
-                self._build_debug_cmd = "rosbuild.sh --cmake-args -DCMAKE_BUILD_TYPE=Debug"
-                self._build_relwithdebinfo_cmd = "rosbuild.sh --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo"
-                self._clean_cmd = "catkin clean --yes --verbose --force"
+            if self._ros_variant.get_version() == '1':
+                self._build_release_cmd = 'rosbuild.sh'
+                self._build_debug_cmd = 'rosbuild.sh --cmake-args -DCMAKE_BUILD_TYPE=Debug'
+                self._build_relwithdebinfo_cmd = 'rosbuild.sh --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo'
+                self._clean_cmd = 'catkin clean --yes --verbose --force'
             else:
-                self._build_release_cmd = "rosbuild.sh"
-                self._build_debug_cmd = "rosbuild.sh --mixin debug"
-                self._build_relwithdebinfo_cmd = "rosbuild.sh --mixin rel-with-deb-info"
-                self._clean_cmd = "colcon clean workspace -y"
+                self._build_release_cmd = 'rosbuild.sh'
+                self._build_debug_cmd = 'rosbuild.sh --mixin debug'
+                self._build_relwithdebinfo_cmd = 'rosbuild.sh --mixin rel-with-deb-info'
+                self._clean_cmd = 'colcon clean workspace -y'
 
             self._install_items()
         # trim_block removes the first newline after a block (e.g., after {% endif %}).
         # lstrip_blocks strips leading whitespace from the start of a block line.
         except Exception as e:
-            self._logger.error(f"{e}")
+            self._logger.error(f'{e}')
             raise
 
     def _create_items_to_install(self) -> None:
-        service = "devcont"
+        service = 'devcont'
 
         self._items_to_install = {
-            ".devcontainer/devcontainer.json": [
-                "vscode/dot_devcontainer.j2",
-                {"service": service, "img_user": self._img_user, "img_workspace_dir": self._img_workspace_dir},
+            '.devcontainer/devcontainer.json': [
+                'vscode/dot_devcontainer.j2',
+                {'service': service, 'img_user': self._img_user, 'img_workspace_dir': self._img_workspace_dir},
                 False,
             ],
-            ".devcontainer/docker-compose.yaml": [
-                "docker/docker-compose.j2",
+            '.devcontainer/docker-compose.yaml': [
+                'docker/docker-compose.j2',
                 {
-                    "service": service,
-                    "img_id": self._img_id,
-                    "use_host_nvidia_driver": self._use_host_nvidia_driver,
-                    "workspace_dir": self._workspace_dir,
-                    "img_workspace_dir": self._img_workspace_dir,
-                    "img_datasets_dir": self._img_datasets_dir,
-                    "img_ssh_dir": self._img_ssh_dir,
-                    "use_git": self._use_git,
-                    "gitconfig_file": self._gitconfig_file,
-                    "img_gitconfig_file": self._img_user_home.joinpath(".gitconfig"),
-                    "ext_uid": f"{os.getuid()}",
-                    "ext_upgid": f"{os.getgid()}",
+                    'service': service,
+                    'img_id': self._img_id,
+                    'use_host_nvidia_driver': self._use_host_nvidia_driver,
+                    'workspace_dir': self._workspace_dir,
+                    'img_workspace_dir': self._img_workspace_dir,
+                    'img_datasets_dir': self._img_datasets_dir,
+                    'img_ssh_dir': self._img_ssh_dir,
+                    'use_git': self._use_git,
+                    'gitconfig_file': self._gitconfig_file,
+                    'img_gitconfig_file': self._img_user_home.joinpath('.gitconfig'),
+                    'ext_uid': f'{os.getuid()}',
+                    'ext_upgid': f'{os.getgid()}',
                 },
                 True,
             ],
-            ".vscode/c_cpp_properties.json": [
-                "vscode/c_cpp_properties.j2",
+            '.vscode/c_cpp_properties.json': [
+                'vscode/c_cpp_properties.j2',
                 {
-                    "c_version": f"c{self._ros_variant.get_c_version()}",
-                    "cpp_version": f"c++{self._ros_variant.get_cpp_version()}",
-                    "ros_distro": self._ros_variant.get_distro(),
+                    'c_version': f'c{self._ros_variant.get_c_version()}',
+                    'cpp_version': f'c++{self._ros_variant.get_cpp_version()}',
+                    'ros_distro': self._ros_variant.get_distro(),
                 },
                 False,
             ],
-            ".vscode/settings.json": ["vscode/settings.json", True],
-            ".vscode/tasks.json": [
-                "vscode/tasks.j2",
+            '.vscode/settings.json': ['vscode/settings.json', True],
+            '.vscode/tasks.json': [
+                'vscode/tasks.j2',
                 {
-                    "build_command_for_release": self._build_release_cmd,
-                    "build_command_for_debug": self._build_debug_cmd,
-                    "build_command_for_relwithdebinfo": self._build_relwithdebinfo_cmd,
-                    "clean_command": self._clean_cmd,
+                    'build_command_for_release': self._build_release_cmd,
+                    'build_command_for_debug': self._build_debug_cmd,
+                    'build_command_for_relwithdebinfo': self._build_relwithdebinfo_cmd,
+                    'clean_command': self._clean_cmd,
                 },
                 True,
             ],
-            "ws.code-workspace": ["vscode/ws.j2", {"ros_distro": self._ros_variant.get_distro()}, False],
+            'ws.code-workspace': [
+                'vscode/ws.j2',
+                {'project_id': self._project_id, 'ros_distro': self._ros_variant.get_distro()},
+                False,
+            ],
         }
 
     def _install_items(self) -> None:
@@ -298,7 +304,7 @@ class VscodeProjectCreator:
                 jinja2_template = jinja2_env.get_template(src_path.name)
                 rendered_text = jinja2_template.render(context)
 
-                with dst_path.open("w") as f:
+                with dst_path.open('w') as f:
                     f.write(rendered_text)
 
                 if item[2]:

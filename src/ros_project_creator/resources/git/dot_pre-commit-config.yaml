@@ -31,16 +31,17 @@ repos:
           - --branch=master
 
   # Python hooks
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
+  # Ruff replaces both Black (formatter) and isort (import sorting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Find the latest version from https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.9
     hooks:
-      - id: black
-        args: ["--line-length=120"]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
+      # Run the linter and automatically fix any safe issues.
+      - id: ruff
+        args: [--fix]
+      # Run the formatter.
+      - id: ruff-format
+        args: [--line-ending=lf]
 
   # CPP hooks
   - repo: https://github.com/pre-commit/mirrors-clang-format
