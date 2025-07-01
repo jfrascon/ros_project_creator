@@ -1,12 +1,103 @@
 {
   "folders": [
     {
-      "path": "."
+      "path": ".",
+      "name": "{{ project_id }}"
     }
   ],
-  "settings": {
-    "python.autoComplete.extraPaths": [],
-    "python.analysis.extraPaths": [],
+"settings": {
+    "editor.autoIndent": "full",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.detectIndentation": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file",
+    "editor.formatOnType": true,
+    "editor.lineNumbers": "on",
+    "editor.rulers": [
+      120
+    ],
+    "files.associations": {
+      "*.config": "properties",
+      "*.json": "jsonc",
+      "*.launch": "xml",
+      "*.sdf": "xml",
+      "*.world": "xml"
+    },
+    "files.autoSave": "onFocusChange",
+    "files.autoSaveDelay": 30000,
+    "files.watcherExclude": {
+      "${workspaceFolder}/build/**": true,
+      "${workspaceFolder}/install/**": true,
+      "${workspaceFolder}/devel/**": true,
+      "${workspaceFolder}/log/**": true,
+      "${workspaceFolder}/logs/**": true,
+      // '${workspaceFolder}/src/**' means it looks into all subdirectories inside 'src'.
+      // '/.git/**' refers to any file or folder inside any '.git' directory.
+      // This will automatically exclude all '.git' directories located within any subdirectory of
+      // ${workspaceFolder}/src.
+      "${workspaceFolder}/src/**/.git/**": true
+    },
+    "files.saveConflictResolution": "overwriteFileOnDisk",
+    "files.trimTrailingWhitespace": true,
+    // ==========================================================================
+    // CPP SETTINGS
+    // ==========================================================================
+    "C_Cpp.enhancedColorization": "enabled",
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.loggingLevel": "Debug",
+    "[cpp]": {
+      "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+    "C_Cpp.codeAnalysis.runAutomatically": false,
+    "C_Cpp.codeAnalysis.clangTidy.path": "/usr/bin/clang-tidy",
+    "C_Cpp.codeAnalysis.clangTidy.useBuildPath": true,
+    // Configure glob patterns for excluding folders and files for code analysis.
+    "C_Cpp.codeAnalysis.exclude": {
+      "**/build": true,
+      "**/devel": true,
+      "**/install": true,
+      "**/log": true,
+      "**/.git": true
+    },
+    // ==========================================================================
+    // PYTHON SETTINGS
+    // ==========================================================================
+    "python.autoComplete.extraPaths": [
+      "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.autoFormatStrings": true,
+    "python.analysis.extraPaths": [
+      "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.typeCheckingMode": "standard",
+    "python.languageServer": "Pylance",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": false,
+      "editor.codeActionsOnSave": {
+        "source.fixAll.ruff": "explicit", // lint + safe autofix  (ruff --fix)
+        "source.organizeImports": "explicit", // import order
+        "source.formatDocument.ruff": "explicit" // format with ruff
+      },
+    },
+    // ==========================================================================
+    // ROS
+    // ==========================================================================
     "ros.distro": "{{ ros_distro }}"
+    // ==========================================================================
+    // XML SETTINGS
+    // ==========================================================================
+    "xmlTools.enableXmlTreeView": true,
+    "xmlTools.splitAttributesOnFormat": true,
+    "xmlTools.xmlFormatterImplementation": "v2",
+    "[xml]": {
+      "editor.defaultFormatter": "DotJoshJohnson.xml"
+    }
   }
 }
