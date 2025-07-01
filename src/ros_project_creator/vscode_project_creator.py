@@ -5,7 +5,6 @@ import shutil
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-
 from ros_project_creator.colorizedlogs import ColorizedLogger
 from ros_project_creator.ros_variant import RosVariant
 from ros_project_creator.utilities import Utilities
@@ -187,7 +186,6 @@ class VscodeProjectCreator:
                 },
                 False,
             ],
-            '.vscode/settings.json': ['vscode/settings.json', True],
             '.vscode/tasks.json': [
                 'vscode/tasks.j2',
                 {
