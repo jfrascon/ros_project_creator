@@ -3,5 +3,7 @@
     ROSCONSOLE_CONFIG_FILE="/opt/ros/${ROS_DISTRO}/share/ros/config/rosconsole.config" \
     ROSCONSOLE_STDOUT_LINE_BUFFERED="1" \
     ROSCONSOLE_FORMAT="[\${severity}] [\${time}] \${message}"
+
+    # Items available to use in the environment variable ROSCONSOLE_FORMAT.
     # ${file}, ${function}, ${line}, ${logger}, ${message}, ${node}, ${severity}, ${thread},
     # ${time}, ${walltime}.

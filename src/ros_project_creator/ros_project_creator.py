@@ -245,12 +245,19 @@ class RosProjectCreator:
         if not ros_packages.strip():
             raise RosProjectCreatorException(f"File '{str(ros_packages_file)}' is empty.")
 
-        extra_ros_env_vars_file = self._resources_dir.joinpath(f'ros/env_vars_ros{self._ros_variant.get_version()}.txt')
-        Utilities.assert_file_existence(extra_ros_env_vars_file, f"File '{str(extra_ros_env_vars_file)}' not found")
-        extra_ros_env_vars = Utilities.read_file(extra_ros_env_vars_file)
+        if self._ros_variant.get_version() == 1:
+            extra_ros_env_vars_file = self._resources_dir.joinpath('ros/env_vars_ros1.txt')
+            Utilities.assert_file_existence(extra_ros_env_vars_file, f"File '{str(extra_ros_env_vars_file)}' not found")
+            extra_ros_env_vars = Utilities.read_file(extra_ros_env_vars_file)
 
-        if not extra_ros_env_vars.strip():
-            raise RosProjectCreatorException(f"File '{str(extra_ros_env_vars_file)}' is empty")
+            if not extra_ros_env_vars.strip():
+                raise RosProjectCreatorException(f"File '{str(extra_ros_env_vars_file)}' is empty")
+        else:
+            extra_ros_env_vars_file = self._resources_dir.joinpath('ros/env_vars_ros2.j2')
+            Utilities.assert_file_existence(extra_ros_env_vars_file, f"File '{str(extra_ros_env_vars_file)}' not found")
+            jinja2_env = Environment(loader=FileSystemLoader(extra_ros_env_vars_file.parent), trim_blocks=True, lstrip_blocks=True)
+            jinja2_template = jinja2_env.get_template(extra_ros_env_vars_file.name)
+            extra_ros_env_vars = jinja2_template.render({'ros_distro': self._ros_variant.get_distro()})
 
         # By using a dictionary we can sort the keys and create the files in a specific order,
         # because the key is the file to create, relative to the project directory.
@@ -382,13 +389,13 @@ class RosProjectCreator:
                 False,
             ]
         else:
-            self._items_to_install['docker/.resources/colcon_mixin_metadata.sh'] = [
-                'ros/colcon_mixin_metadata.sh',
-                True,
-            ]
             self._items_to_install['docker/.resources/rosdep_ignored_keys.yaml'] = [
                 'ros/rosdep_ignored_keys_ros2.yaml',
                 False,
+            ]
+            self._items_to_install['docker/.resources/colcon_mixin_metadata.sh'] = [
+                'ros/colcon_mixin_metadata.sh',
+                True,
             ]
 
         if not self._use_base_img_entrypoint:
