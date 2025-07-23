@@ -255,7 +255,9 @@ class RosProjectCreator:
         else:
             extra_ros_env_vars_file = self._resources_dir.joinpath('ros/env_vars_ros2.j2')
             Utilities.assert_file_existence(extra_ros_env_vars_file, f"File '{str(extra_ros_env_vars_file)}' not found")
-            jinja2_env = Environment(loader=FileSystemLoader(extra_ros_env_vars_file.parent), trim_blocks=True, lstrip_blocks=True)
+            jinja2_env = Environment(
+                loader=FileSystemLoader(extra_ros_env_vars_file.parent), trim_blocks=True, lstrip_blocks=True
+            )
             jinja2_template = jinja2_env.get_template(extra_ros_env_vars_file.name)
             extra_ros_env_vars = jinja2_template.render({'ros_distro': self._ros_variant.get_distro()})
 
@@ -348,6 +350,8 @@ class RosProjectCreator:
                     'use_git': False,
                     'ext_uid': '1000',
                     'ext_upgid': '1000',
+                    'ros_version': self._ros_variant.get_version(),
+                    'ros_distro': self._ros_variant.get_distro(),
                 },
                 False,
             ],

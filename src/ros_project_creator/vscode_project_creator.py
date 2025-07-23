@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+
 from ros_project_creator.colorizedlogs import ColorizedLogger
 from ros_project_creator.ros_variant import RosVariant
 from ros_project_creator.utilities import Utilities
@@ -174,6 +175,8 @@ class VscodeProjectCreator:
                     'img_gitconfig_file': self._img_user_home.joinpath('.gitconfig'),
                     'ext_uid': f'{os.getuid()}',
                     'ext_upgid': f'{os.getgid()}',
+                    'ros_version': self._ros_variant.get_version(),
+                    'ros_distro': self._ros_variant.get_distro(),
                 },
                 True,
             ],
