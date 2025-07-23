@@ -20,11 +20,13 @@
       120
     ],
     "files.associations": {
-      "*.config": "properties",
-      "*.json": "jsonc",
-      "*.launch": "xml",
-      "*.sdf": "xml",
-      "*.world": "xml"
+        "*.config": "properties",
+        "*.json": "jsonc",
+        "*.launch": "xml",
+        "*.sdf": "xml",
+        "*.urdf": "xml",
+        "*.xacro": "xml",
+        "*.world": "xml"
     },
     "files.autoSave": "onFocusChange",
     "files.autoSaveDelay": 30000,
@@ -86,18 +88,22 @@
         "source.formatDocument.ruff": "explicit" // format with ruff
       },
     },
+
     // ==========================================================================
     // ROS
     // ==========================================================================
     "ros.distro": "{{ ros_distro }}"
+
     // ==========================================================================
     // XML SETTINGS
     // ==========================================================================
-    "xmlTools.enableXmlTreeView": true,
-    "xmlTools.splitAttributesOnFormat": true,
-    "xmlTools.xmlFormatterImplementation": "v2",
     "[xml]": {
-      "editor.defaultFormatter": "DotJoshJohnson.xml"
-    }
+        "editor.defaultFormatter": "redhat.vscode-xml"
+    },
+
+    "xml.format.maxLineWidth": 120,
+    "xml.format.splitAttributes": "preserve",
+    "xml.format.splitAttributesIndentSize": 4,
+    "xml.format.closingBracketNewLine": false,
   }
 }
