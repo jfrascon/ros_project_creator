@@ -340,17 +340,19 @@ python_packages=(argcomplete ruff cmake-format pre-commit)
 
 log "Installing Python packages for the user '${IMG_USER}': ${python_packages[*]}"
 
+pip_args=(--no-cache-dir --disable-pip-version-check)
+
 # Asegurar permisos correctos sobre el home (solo si no es root)
 if [ "${IMG_USER}" != root ]; then
+    pip_args+=(--user)
+
     # The '--break-system-packages', described in PEP 668, was introduced in Python 3.11+ from Debian Bookworm and
     # Ubuntu 24.04 (Noble Numbat), onwards. PEP 668 prevents installing packages with  'pip install --user' in
     # system-managed environments. To work around this, the '--break-system-packages' flag is used to allow the
     # installation of packages in user-managed environments.
     # Ubuntu 22.04 (Jammy), and below, does NOT have this restriction, so 'pip install --user' should work fine.
     if python3 -m pip install --help | grep --quiet 'break-system-packages'; then
-        flag_break="--break-system-packages"
-    else
-        flag_break=""
+        pip_args+=("--break-system-packages")
     fi
 
     # -H flag is used to set the HOME environment variable to the home directory of the target user.
@@ -360,10 +362,12 @@ if [ "${IMG_USER}" != root ]; then
     # To avoid warning messages when installing packages we set the environment variable PATH to include
     # the user's local bin directory. Next, an ENV variable is set to include the user's local bin
     # directory in the PATH variable, in the Dockerfile.
+    # Build pip install arguments robustly (avoid empty args and expand arrays safely).
+
     sudo -H -u "${IMG_USER}" env PATH="${img_user_home}/.local/bin:${PATH}" \
-        python3 -m pip install --no-cache-dir --user ${flag_break} ${python_packages[@]}
+        python3 -m pip install "${pip_args[@]}" "${python_packages[@]}"
 else
-    python3 -m pip install --no-cache-dir ${python_packages[@]}
+    python3 -m pip install "${pip_args[@]}" "${python_packages[@]}"
 fi
 
 #-----------------------------------------------------------------------------------------------------------------------
