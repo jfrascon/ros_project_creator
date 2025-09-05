@@ -37,7 +37,7 @@ line-ending = "lf"
 #   - C4: redundant comprehensions simplification (flake8-comprehensions)
 #   - I:  import sorting                          (isort rules, Ruff-native)
 #   - UP: upgrade syntax to newer Python          (pyupgrade)
-select = ["E", "W", "F", "Q", "B", "C4", "I", "UP"]
+select = ["E", "W", "F", "Q", "B", "C4", "I"]
 
 # Ignore PEP 8 slice-spacing clash with Black (still flagged by pycodestyle)
 extend-ignore = ["E203"]
