@@ -361,9 +361,9 @@ if [ "${IMG_USER}" != root ]; then
     # the user's local bin directory. Next, an ENV variable is set to include the user's local bin
     # directory in the PATH variable, in the Dockerfile.
     sudo -H -u "${IMG_USER}" env PATH="${img_user_home}/.local/bin:${PATH}" \
-        python3 -m pip install --no-cache-dir --user ${flag_break} ${python_packages}
+        python3 -m pip install --no-cache-dir --user ${flag_break} ${python_packages[@]}
 else
-    python3 -m pip install --no-cache-dir ${python_packages}
+    python3 -m pip install --no-cache-dir ${python_packages[@]}
 fi
 
 #-----------------------------------------------------------------------------------------------------------------------
