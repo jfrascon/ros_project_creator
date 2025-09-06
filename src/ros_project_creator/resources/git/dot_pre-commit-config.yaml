@@ -42,7 +42,7 @@ repos:
         args: [--fix]
       # Run the formatter.
       - id: ruff-format
-        args: [--line-ending=lf]
+      # Configure line endings via pyproject.toml; no args here
 
   # CPP hooks
   - repo: https://github.com/pre-commit/mirrors-clang-format
