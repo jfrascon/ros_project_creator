@@ -66,3 +66,11 @@ class RosVariant:
             str: The ROS version.
         """
         return self._ros_variant["ros_version"]
+
+    def get_python_version(self) -> str:
+        """
+        Returns the Python version associated with the Ubuntu base for this ROS distro.
+        Returns:
+            str: The Python version (e.g., '3.8', '3.10', '3.12').
+        """
+        return self._ros_variant["python_version"]

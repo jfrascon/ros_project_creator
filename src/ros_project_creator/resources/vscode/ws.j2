@@ -71,11 +71,11 @@
     // PYTHON SETTINGS
     // ==========================================================================
     "python.autoComplete.extraPaths": [
-      "/opt/ros/jazzy/lib/python3.12/site-packages"
+      "/opt/ros/{{ ros_distro }}/lib/python{{ python_version }}/site-packages"
     ],
     "python.analysis.autoFormatStrings": true,
     "python.analysis.extraPaths": [
-      "/opt/ros/jazzy/lib/python3.12/site-packages"
+      "/opt/ros/{{ ros_distro }}/lib/python{{ python_version }}/site-packages"
     ],
     "python.analysis.typeCheckingMode": "standard",
     "python.languageServer": "Pylance",

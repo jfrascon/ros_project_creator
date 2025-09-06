@@ -2,6 +2,7 @@ noetic:
   ros_distro: noetic
   ros_version: 1
   ubuntu_version: "20.04"
+  python_version: "3.8"
   c_version: 99
   cpp_version: 14
 
@@ -9,6 +10,7 @@ humble:
   ros_distro: humble
   ros_version: 2
   ubuntu_version: "22.04"
+  python_version: "3.10"
   c_version: 99
   cpp_version: 17
 
@@ -16,5 +18,6 @@ jazzy:
   ros_distro: jazzy
   ros_version: 2
   ubuntu_version: "24.04"
+  python_version: "3.12"
   c_version: 99
   cpp_version: 17

@@ -133,7 +133,7 @@ class VscodeProjectCreator:
                 self._use_git = False
                 self._gitconfig_file = None
 
-            if self._ros_variant.get_version() == '1':
+            if self._ros_variant.get_version() == 1:
                 self._build_release_cmd = 'rosbuild.sh'
                 self._build_debug_cmd = 'rosbuild.sh --cmake-args -DCMAKE_BUILD_TYPE=Debug'
                 self._build_relwithdebinfo_cmd = 'rosbuild.sh --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo'
@@ -201,7 +201,11 @@ class VscodeProjectCreator:
             ],
             'ws.code-workspace': [
                 'vscode/ws.j2',
-                {'project_id': self._project_id, 'ros_distro': self._ros_variant.get_distro()},
+                {
+                    'project_id': self._project_id,
+                    'ros_distro': self._ros_variant.get_distro(),
+                    'python_version': self._ros_variant.get_python_version(),
+                },
                 False,
             ],
         }
