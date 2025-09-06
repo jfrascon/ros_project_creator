@@ -3,6 +3,9 @@
     {
       "path": ".",
       "name": "{{ project_id }}"
+    },
+    {
+        "path": "src/0_deps"
     }
   ],
 "settings": {
@@ -30,20 +33,56 @@
     },
     "files.autoSave": "onFocusChange",
     "files.autoSaveDelay": 30000,
+    "files.exclude": {
+        "/.git": true,
+        "/.svn": true,
+        "/.hg": true,
+        "/.DS_Store": true,
+        "src/0_deps/": true,
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/.cache": true,
+        "**/.idea": true,
+        "**/CMakeFiles": true,
+        "**/CMakeCache.txt": true,
+        "**/Thumbs.db": true,
+    },
     "files.watcherExclude": {
-      "${workspaceFolder}/build/**": true,
-      "${workspaceFolder}/install/**": true,
-      "${workspaceFolder}/devel/**": true,
-      "${workspaceFolder}/log/**": true,
-      "${workspaceFolder}/logs/**": true,
-      // '${workspaceFolder}/src/**' means it looks into all subdirectories inside 'src'.
-      // '/.git/**' refers to any file or folder inside any '.git' directory.
-      // This will automatically exclude all '.git' directories located within any subdirectory of
-      // ${workspaceFolder}/src.
-      "${workspaceFolder}/src/**/.git/**": true
+        "build/": true,
+        "install/": true,
+        "devel/": true,
+        "log/": true,
+        "logs/": true,
+        "**/.git/**": true,
+        "src/0_deps/**": true,
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true,
+        "**/.mypy_cache/**": true,
+        "**/.ruff_cache/**": true,
+        "**/.cache/**": true,
+        "**/.idea/**": true,
+        "**/CMakeFiles/**": true,
+        "**/CMakeCache.txt": true
     },
     "files.saveConflictResolution": "overwriteFileOnDisk",
     "files.trimTrailingWhitespace": true,
+    "search.exclude": {
+        "/node_modules": true,
+        "/bower_components": true,
+        "src/0_deps/": true,
+        "**/.git/**": true,
+        "/*.code-search": true,
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true,
+        "**/.mypy_cache/**": true,
+        "**/.ruff_cache/**": true,
+        "**/.cache/**": true,
+        "**/.idea/**": true,
+        "**/CMakeFiles/**": true,
+        "**/CMakeCache.txt": true
+    },
     // ==========================================================================
     // CPP SETTINGS
     // ==========================================================================
@@ -84,11 +123,11 @@
         "editor.formatOnSave": true,
         "editor.formatOnSaveMode": "modificationsIfAvailable",
         "editor.codeActionsOnSave": {
-            "source.fixAll.ruff": "explicit",
-            "source.organizeImports.ruff": "explicit"
+            "source.fixAll.ruff": "always",
+            "source.organizeImports": "never",
+            "source.organizeImports.ruff": "always"
         }
     },
-
     // ==========================================================================
     // ROS
     // ==========================================================================
@@ -100,10 +139,21 @@
     "[xml]": {
         "editor.defaultFormatter": "redhat.vscode-xml"
     },
-
-    "xml.format.maxLineWidth": 120,
+    // ==========================================================================
+    // RUFF
+    // ==========================================================================
+    //"ruff.configuration": leave it empty to use the pyproject.toml file of each repo.
+    "ruff.importStrategy": "fromEnvironment",
+    "ruff.nativeServer": "on",
+    // ==========================================================================
+    // XML SETTINGS
+    // ==========================================================================
+    //"[xml]": {
+    //    "editor.defaultFormatter": "redhat.vscode-xml"
+    //},
+    "xml.format.maxLineWidth": 0,
     "xml.format.splitAttributes": "preserve",
-    "xml.format.splitAttributesIndentSize": 4,
     "xml.format.closingBracketNewLine": false,
+    "xml.format.spaceBeforeEmptyCloseTag": false,
   }
 }
