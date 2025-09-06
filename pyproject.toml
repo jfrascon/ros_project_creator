@@ -10,7 +10,7 @@ maintainers = [
     { name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" },
 ]
 license = { text = "MIT" }
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 dependencies = ["argcomplete", "colorama", "pre-commit", "jinja2"]
 keywords = ["ROS", "automation", "project generator", "Robotics DevOps"]
 classifiers = [
@@ -18,14 +18,16 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+
+[project.urls]
+Repository = "https://github.com/jfrascon/ros_project_creator"
+Issues = "https://github.com/jfrascon/ros_project_creator/issues"
+Homepage = "https://github.com/jfrascon/ros_project_creator"
 
 [project.scripts]
 create_ros_project = "ros_project_creator.create_ros_project:main"
@@ -40,10 +42,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ros_project_creator"]
-include = ["src/ros_project_creator", "resources/**"]
+include = ["src/ros_project_creator/resources/**"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/ros_project_creator", "resources/**"]
+include = ["src/ros_project_creator", "src/ros_project_creator/resources/**", "README.md", "LICENSE*"]
 
 [tool.uv]
 managed = true
