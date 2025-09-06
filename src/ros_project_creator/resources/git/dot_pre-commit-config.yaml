@@ -15,7 +15,7 @@
 repos:
   # Standard hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-case-conflict
       - id: check-merge-conflict
@@ -35,25 +35,25 @@ repos:
   # Ruff replaces both Black (formatter) and isort (import sorting)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Find the latest version from https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.9
+    rev: v0.12.12
     hooks:
       # Run the linter and automatically fix any safe issues.
       - id: ruff
-        args: [--fix]
+        args: [--fix, --config, pyproject.toml]
       # Run the formatter.
       - id: ruff-format
-      # Configure line endings via pyproject.toml; no args here
+        args: [--config, pyproject.toml]
 
   # CPP hooks
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v19.1.1
+    rev: v21.1.0
     hooks:
       - id: clang-format
         files: \.(cpp|hpp|c|h)$
 
   # Shell hooks
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.10.0-2
+    rev: v3.12.0-2
     hooks:
       - id: shfmt
         args: [-w, -s, -i=4]
