@@ -63,3 +63,6 @@ docstring-quotes = "double"
 # non-docstring, multi-line strings. If unset, it typically defaults to the
 # style of `inline-quotes`. For example:
 # multiline-quotes = "single"
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
