@@ -13,77 +13,105 @@
 # See https://github.com/pre-commit/pre-commit
 
 default_install_hook_types:
-- pre-commit
-- commit-msg
+  - pre-commit
+  - commit-msg
+
+exclude: ^build/|^install/|^log/|^\.vscode/
 
 repos:
   # Standard hooks
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v6.0.0
-  hooks:
-  - id: check-case-conflict
-  - id: check-merge-conflict
-  - id: check-symlinks
-  - id: check-yaml
-    exclude: ^src/\.clang-format$
-  - id: check-json
-  - id: check-xml
-  - id: check-toml
-  - id: debug-statements
-  - id: end-of-file-fixer
-  - id: mixed-line-ending
-  - id: trailing-whitespace
-  - id: no-commit-to-branch
-    args:
-    - --branch=main
-    - --branch=master
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        # 25600 KiB = 25 MiB; ROS projects may need to version reasonably sized mesh/assets files.
+        args: [--maxkb=25600]
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-yaml
+      - id: check-json
+      - id: check-xml
+      - id: check-toml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        exclude_types: [svg]
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        exclude_types: [svg]
+      - id: fix-byte-order-marker
+      - id: no-commit-to-branch
+        args:
+          - --branch=main
+          - --branch=master
 
   # Python hooks
-  # Ruff replaces both Black (formatter) and isort (import sorting)
-- repo: https://github.com/astral-sh/ruff-pre-commit
-    # Find the latest version from https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.14
-  hooks:
-      # Run the linter and automatically fix any safe issues.
-  - id: ruff
-    args: [--fix, --config, pyproject.toml]
-      # Run the formatter.
-  - id: ruff-format
-    args: [--config, pyproject.toml]
+  # Ruff replaces both Black (formatter) and isort (import sorting).
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.21
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
 
   # TOML hooks
-- repo: https://github.com/ComPWA/taplo-pre-commit
-  rev: v0.9.3
-  hooks:
-  - id: taplo-format
-  - id: taplo-lint
-    args: [--no-schema]
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+      - id: taplo-lint
+        args: [--no-schema]
 
   # YAML hooks
-- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.16.0
-  hooks:
-  - id: pretty-format-yaml
-    args: [--autofix, --preserve-quotes]
-
-  # CPP hooks
-- repo: https://github.com/pre-commit/mirrors-clang-format
-  rev: v22.1.5
-  hooks:
-  - id: clang-format
-    files: \.(cpp|hpp|c|h)$
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.16.0
+    hooks:
+      - id: pretty-format-yaml
+        args: [--autofix, --preserve-quotes]
 
   # Shell hooks
-- repo: https://github.com/scop/pre-commit-shfmt
-  rev: v3.13.1-1
-  hooks:
-  - id: shfmt
-    args: [-w, -s, -i=4]
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
+    hooks:
+      - id: shfmt
+        args: [-w, -s, -i=4]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      # ShellCheck may report many warnings in legacy scripts, but it catches real bugs.
+      # Prefer justified local suppressions over disabling the hook; for example,
+      # '# shellcheck disable=SC1091' before sourcing a file that only exists at runtime.
+      - id: shellcheck
+
+  # Secrets scanning
+  # Gitleaks detects tokens, passwords, PATs, API keys, and other secrets beyond private keys.
+  # Keep this documented for future use; uncomment when broader secret scanning is desired.
+  # - repo: https://github.com/gitleaks/gitleaks
+  #   rev: v8.24.2
+  #   hooks:
+  #     - id: gitleaks
 
   # Conventional Commits validation (commit message hook)
-- repo: https://github.com/compilerla/conventional-pre-commit
-  rev: v4.4.0
-  hooks:
-  - id: conventional-pre-commit
-    stages: [commit-msg]
-    args: []
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --verbose
+          - build
+          - chore
+          - ci
+          - docs
+          - feat
+          - fix
+          - perf
+          - refactor
+          - revert
+          - style
+          - test
