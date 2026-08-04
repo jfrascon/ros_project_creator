@@ -1,108 +1,119 @@
-#http://clang.llvm.org/docs/ClangFormatStyleOptions.html
-#clang-format-9 --dump-config
-# https://zed0.co.uk/clang-format-configurator/
 ---
-BasedOnStyle: 'LLVM'
-AccessModifierOffset: '0'
-AlignAfterOpenBracket: 'Align'
-AlignConsecutiveAssignments: 'true'
-AlignConsecutiveDeclarations: 'false'
-AlignConsecutiveMacros: 'true'
-AlignEscapedNewlines: 'Right'
-AlignOperands: 'true'
-AlignTrailingComments: 'true'
-AllowAllArgumentsOnNextLine: 'false'
-AllowAllConstructorInitializersOnNextLine: 'false'
-AllowAllParametersOfDeclarationOnNextLine: 'false'
-AllowShortBlocksOnASingleLine: 'false'
-AllowShortCaseLabelsOnASingleLine: 'false'
-AllowShortFunctionsOnASingleLine: 'Empty'
-AllowShortIfStatementsOnASingleLine: 'Never'
-AllowShortLambdasOnASingleLine: 'Empty'
-AllowShortLoopsOnASingleLine: 'false'
-AlwaysBreakAfterDefinitionReturnType: 'None'
-AlwaysBreakAfterReturnType: 'None'
-AlwaysBreakBeforeMultilineStrings: 'false'
-AlwaysBreakTemplateDeclarations: 'Yes'
-BinPackArguments: 'false'
-BinPackParameters: 'false'
-BraceWrapping:
-  AfterCaseLabel: 'true'
-  AfterClass: 'true'
-  AfterControlStatement: 'true'
-  AfterEnum: 'true'
-  AfterExternBlock: 'true'
-  AfterFunction: 'true'
-  AfterNamespace: 'true'
-  AfterObjCDeclaration: 'true'
-  AfterStruct: 'true'
-  AfterUnion: 'true'
-  BeforeCatch: 'true'
-  BeforeElse: 'true'
-  IndentBraces: 'false'
-  SplitEmptyFunction: 'false'
-  SplitEmptyRecord: 'false'
-  SplitEmptyNamespace: 'false'
+# Modified from
+# https://github.com/ament/ament_lint/blob/master/ament_clang_format/ament_clang_format/configuration/.clang-format,
+# which can be considered the default configuration for ROS 2 C++ code.
+# This file is also inspired by the clang-format of the great robotics projects: ros2control, autoware and plotjuggler.
+
+# Referente for clang-format: http://clang.llvm.org/docs/ClangFormatStyleOptions.html
+# Dump all clang-format options to a file: clang-format-9 --dump-config
+# Online clang-format configurator: https://clang-format-configurator.site/
+---
+Language: Cpp
+BasedOnStyle: Google
+Standard: Auto
+AccessModifierOffset: -2
+ConstructorInitializerIndentWidth: 2
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments:
+  Enabled: false
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: false
+  AlignFunctionPointers: false
+  PadOperators: false
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignCompound: true
+  AlignFunctionPointers: true
+  PadOperators: true
+AlignEscapedNewlines: Right
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
-BreakBeforeTernaryOperators: 'false'
-BreakConstructorInitializers: 'AfterColon'
-BreakInheritanceList: 'AfterColon'
-BreakStringLiterals: 'true'
-ColumnLimit: '100'
-CommentPragmas: '^ IWYU pragma:'
-CompactNamespaces: 'false'
-ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
-ConstructorInitializerIndentWidth: '2'
-ContinuationIndentWidth: '2'
-Cpp11BracedListStyle: 'true'
-DerivePointerAlignment: 'false'
-DisableFormat: 'false'
-ExperimentalAutoDetectBinPacking: 'false'
-FixNamespaceComments: 'true'
-ForEachMacros:
-  - foreach
-  - Q_FOREACH
-  - BOOST_FOREACH
-IncludeBlocks: 'Preserve'
-IndentCaseLabels: 'true'
-IndentPPDirectives: 'AfterHash'
-IndentWidth: '2'
-IndentWrappedFunctionNames: 'true'
-KeepEmptyLinesAtTheStartOfBlocks: 'false'
-Language: 'Cpp'
-MaxEmptyLinesToKeep: '2'
-NamespaceIndentation: 'All'
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterExternBlock: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyNamespace: false
+  SplitEmptyRecord: false
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterComma
+BreakStringLiterals: true
+ColumnLimit: 100
+ContinuationIndentWidth: 2
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+IncludeBlocks: Preserve
+IndentCaseLabels: true
+IndentPPDirectives: AfterHash
+IndentWrappedFunctionNames: true
+InsertBraces: true
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
+# NamespaceIndentation: "All"
+PackConstructorInitializers: CurrentLine
 PenaltyBreakAssignment: 100000
-# PenaltyBreakBeforeFirstCallParameter: 1000
-# PenaltyBreakComment: 300
-# PenaltyBreakFirstLessLess: 1200
-# PenaltyBreakString: 1000
-# PenaltyBreakTemplateDeclaration: 1000
-PenaltyExcessCharacter: 10000
-PenaltyReturnTypeOnItsOwnLine: 10000
-PointerAlignment: 'Left'
-ReflowComments: 'true'
-SortIncludes: 'false'
-SortUsingDeclarations: 'true'
-SpaceAfterCStyleCast: 'false'
-SpaceAfterLogicalNot: 'false'
-SpaceAfterTemplateKeyword: 'false'
-SpaceBeforeAssignmentOperators: 'true'
-SpaceBeforeCpp11BracedList: 'false'
-SpaceBeforeCtorInitializerColon: 'false'
-SpaceBeforeInheritanceColon: 'false'
-SpaceBeforeParens: 'Never'
-SpaceBeforeRangeBasedForLoopColon: 'false'
-SpaceInEmptyParentheses: 'false'
-SpacesBeforeTrailingComments: '2'
-SpacesInAngles: 'false'
-SpacesInCStyleCastParentheses: 'false'
-SpacesInContainerLiterals: 'false'
-SpacesInParentheses: 'false'
-SpacesInSquareBrackets: 'false'
-Standard: 'Cpp11'
-TabWidth: '2'
-UseTab: 'Never'
-
-...
+PenaltyBreakBeforeFirstCallParameter: 1000
+PenaltyBreakFirstLessLess: 1200
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 200
+PointerAlignment: Left
+ReflowComments: true
+SortIncludes: Never
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCtorInitializerColon: false
+SpaceBeforeInheritanceColon: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: false
+  AfterForeachMacros: false
+  AfterFunctionDefinitionName: false
+  AfterFunctionDeclarationName: false
+  AfterIfMacros: false
+  AfterOverloadedOperator: false
+  AfterPlacementOperator: false
+  AfterRequiresInClause: false
+  AfterRequiresInExpression: false
+  BeforeNonEmptyParentheses: false
+SpaceBeforeRangeBasedForLoopColon: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: Never
+SpacesInContainerLiterals: false
+SpacesInParens: Never
+SpacesInParensOptions:
+  InCStyleCasts: false
+  InConditionalStatements: false
+  InEmptyParentheses: false
+  Other: false
+UseTab: Never
+IndentWidth: 2
+TabWidth: 2
