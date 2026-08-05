@@ -52,6 +52,33 @@ git submodule update --init --recursive
 
 The submodule is configured to track the `ros2` branch of `robotics_dockers`.
 
+## Updating `robotics_dockers`
+
+`robotics_dockers` is a private dependency of `ros-project-generator`. It is stored as a Git submodule under
+`extern/robotics_dockers` instead of being duplicated in this repository or declared as a PyPI dependency. The submodule
+records the exact commit used by `ros-project-generator`, while still keeping Docker image generation owned by the
+`robotics_dockers` project.
+
+Update the submodule from the branch configured in `.gitmodules`:
+
+```sh
+git submodule update --remote extern/robotics_dockers
+git status
+git add extern/robotics_dockers
+git commit -m "chore: update robotics_dockers submodule"
+```
+
+If you are testing an unpublished local checkout of `robotics_dockers`, move the submodule to that commit explicitly:
+
+```sh
+git -C extern/robotics_dockers fetch /path/to/robotics_dockers ros2
+git -C extern/robotics_dockers checkout <commit>
+git add extern/robotics_dockers
+git commit -m "chore: update robotics_dockers submodule"
+```
+
+Commit README or template updates separately from the submodule pointer so each commit describes one kind of change.
+
 ## Local Development Install
 
 These packages are not assumed to be published to PyPI. Install both local projects in editable mode:
