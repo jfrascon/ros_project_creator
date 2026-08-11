@@ -5,6 +5,9 @@
 # All settings related to how Ruff analyzes and formats your code go under this table.
 [tool.ruff]
 line-length = 120
+# Set this when Python source roots are known, for example:
+# src = ["src/my_python_pkg", "tests"]
+src = []
 
 [tool.ruff.format]
 # Use single quotes for ordinary strings
@@ -66,3 +69,6 @@ docstring-quotes = "double"
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
+# Set this when you want specific import sections to stay adjacent instead of separated by blank lines.
+# Common values: "future", "standard-library", "third-party", "first-party", "local-folder".
+no-lines-before = []

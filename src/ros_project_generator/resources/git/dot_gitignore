@@ -1,8 +1,42 @@
+# ROS workspace artifacts
 build/
 install/
 devel/
 log/
+
+# Local dependencies
 src/0_deps/
-.devcontainer/.env
+.devcontainer/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.ruff_cache
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+env/
+
+# Tooling
+.cache/
+.devcontainer/
+.codex/
+.copilot/
+.github
+
+# Editors / OS
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 *.code-workspace
