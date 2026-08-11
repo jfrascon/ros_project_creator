@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 from pathlib import Path
 
 from ros_project_generator.logging_utils import create_logger
@@ -109,7 +108,6 @@ class VscodeProjectCreator:
 
             self._img_workspace_dir = img_workspace_dir
             self._use_host_nvidia_driver = use_host_nvidia_driver
-            self._render_gid = self._resolve_render_gid()
 
             # Get git config for the user running the project configuration tool and write it to the docker-compose
             # file, in the volumes section.
@@ -154,6 +152,8 @@ class VscodeProjectCreator:
                 'vscode/devcontainer.json.j2',
                 {'service': service, 'remote_user': self._img_user, 'img_workspace_dir': self._img_workspace_dir},
             ),
+            ResourceSpec.file('.devcontainer/devcode', 'vscode/devcode', executable=True),
+            ResourceSpec.file('.devcontainer/devcont', 'vscode/devcont', executable=True),
             ResourceSpec.template(
                 '.devcontainer/docker-compose.yaml',
                 'vscode/docker-compose.yaml.j2',
@@ -168,9 +168,6 @@ class VscodeProjectCreator:
                     'use_git': self._use_git,
                     'gitconfig_file': self._gitconfig_file,
                     'img_gitconfig_file': self._img_user_home.joinpath('.gitconfig'),
-                    'host_uid': f'{os.getuid()}',
-                    'host_upgid': f'{os.getgid()}',
-                    'render_gid': self._render_gid,
                     'ros_version': self._ros_variant.get_version(),
                     'ros_distro': self._ros_variant.get_distro(),
                 },
@@ -206,12 +203,3 @@ class VscodeProjectCreator:
             exception_type=VscodeProjectCreatorException,
             replace_existing=True,
         ).install(self._items_to_install)
-
-    @staticmethod
-    def _resolve_render_gid() -> str:
-        render_device = Path('/dev/dri/renderD128')
-
-        if render_device.exists():
-            return str(render_device.stat().st_gid)
-
-        return str(os.getgid())

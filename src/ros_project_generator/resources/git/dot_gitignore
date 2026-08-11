@@ -3,6 +3,6 @@ install/
 devel/
 log/
 src/0_deps/
-.devcontainer/
+.devcontainer/.env
 .vscode/
 *.code-workspace

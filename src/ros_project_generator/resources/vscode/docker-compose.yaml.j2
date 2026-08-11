@@ -46,8 +46,14 @@ services:
       # +-------------------+
       # | Graphics mappings |
       # +-------------------+
-      - /tmp/.cookies.xauth:/tmp/.cookies.xauth:rw
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - type: bind
+        source: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR must be set}/docker-xwayland.xauth"
+        target: /tmp/docker-xwayland.xauth
+        read_only: true
+        bind:
+          create_host_path: false
+
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
 
       # +-----------------+
       # | Custom mappings |
@@ -94,27 +100,52 @@ services:
     #  - "c 189:* rmw" # usb_device
 
     environment:
-      DISPLAY: "${DISPLAY}"
+      DISPLAY: "${DISPLAY:?DISPLAY must be set}"
+      # Use the host XWayland display and the Xauthority file mounted above.
+      XAUTHORITY: "/tmp/docker-xwayland.xauth"
+
+      # Force Qt applications such as RViz and Gazebo to use X11 through
+      # XWayland instead of attempting a native Wayland connection.
+      QT_QPA_PLATFORM: "xcb"
       QT_X11_NO_MITSHM: "1"
+
       TERM: "${TERM:-xterm-256color}"
-      XAUTHORITY: "/tmp/.cookies.xauth"
+
       {% if use_host_nvidia_driver %}
       NVIDIA_VISIBLE_DEVICES: "all"
       NVIDIA_DRIVER_CAPABILITIES: "all"
       {% endif %}
 
       # Used by the entrypoint to remap the container user and then exec with gosu.
-      HOST_UID: "{{ host_uid }}"
-      HOST_UPGID: "{{ host_upgid }}"
+      # How to provide HOST_UID and HOST_UPGID (choose one):
+      #   1. .env file next to this docker-compose file:
+      #        HOST_UID=1000
+      #        HOST_UPGID=1000
+      #   2. Export in your shell before running docker compose:
+      #        export HOST_UID=$(id -u) HOST_UPGID=$(id -g)
+      #   3. Inline when running docker compose:
+      #        HOST_UID=$(id -u) HOST_UPGID=$(id -g) docker compose up
+      HOST_UID: "${HOST_UID:?HOST_UID must be set}"
+      HOST_UPGID: "${HOST_UPGID:?HOST_UPGID must be set}"
 
     # Add the GID of the render device group so that all container processes
     # (including those opened by VS Code) can access /dev/dri/renderD* for
     # GPU-accelerated rendering (Gazebo, RViz, OpenGL).
-    # This value can be checked on the host with: stat -c %g /dev/dri/renderD128
+    # How to find the value for your machine:
+    #   stat -c %g /dev/dri/renderD128
+    #
+    # How to provide RENDER_GID (choose one):
+    #   1. .env file next to this docker-compose file:
+    #        RENDER_GID=992
+    #   2. Export in your shell before running docker compose:
+    #        export RENDER_GID=$(stat -c %g /dev/dri/renderD128)
+    #   3. Inline when running docker compose:
+    #        RENDER_GID=$(stat -c %g /dev/dri/renderD128) docker compose up
+    #
     # This is required because modifying /etc/group at runtime (entrypoint) is
     # not enough: processes started by VS Code do not inherit late group changes.
     group_add:
-      - "{{ render_gid }}"
+      - "${RENDER_GID:?RENDER_GID must be set}"
 
     # init: true enables a tiny init (tini) as PID 1 inside the container.
     # It forwards signals (SIGTERM/SIGINT) to the app and reaps zombie

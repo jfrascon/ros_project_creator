@@ -96,6 +96,8 @@ def test_create_ros2_project_with_vscode_renders_templates(fake_active_user: Pat
 
     generated_files = [
         project_dir / '.devcontainer/devcontainer.json',
+        project_dir / '.devcontainer/devcode',
+        project_dir / '.devcontainer/devcont',
         project_dir / '.devcontainer/docker-compose.yaml',
         project_dir / '.vscode/c_cpp_properties.json',
         project_dir / '.vscode/tasks.json',
@@ -111,12 +113,20 @@ def test_create_ros2_project_with_vscode_renders_templates(fake_active_user: Pat
     devcontainer = json.loads(project_dir.joinpath('.devcontainer/devcontainer.json').read_text())
 
     compose_text = project_dir.joinpath('.devcontainer/docker-compose.yaml').read_text()
-    render_device = Path('/dev/dri/renderD128')
-    expected_render_gid = render_device.stat().st_gid if render_device.exists() else os.getgid()
+    devcode_script = project_dir.joinpath('.devcontainer/devcode')
+    devcont_script = project_dir.joinpath('.devcontainer/devcont')
 
     assert 'demo/vscode:latest' in compose_text
-    assert 'RENDER_GID' not in compose_text
-    assert f'      - "{expected_render_gid}"' in compose_text
+    assert '${HOST_UID:?HOST_UID must be set}' in compose_text
+    assert '${HOST_UPGID:?HOST_UPGID must be set}' in compose_text
+    assert '${RENDER_GID:?RENDER_GID must be set}' in compose_text
+    assert not project_dir.joinpath('.devcontainer/.env').exists()
+    assert os.access(devcode_script, os.X_OK)
+    assert os.access(devcont_script, os.X_OK)
+    assert 'getopt' in devcode_script.read_text()
+    assert 'getopt' in devcont_script.read_text()
+    assert '--up' in devcont_script.read_text()
+    assert '--down' in devcont_script.read_text()
     assert devcontainer['updateRemoteUserUID'] is True
     assert devcontainer['overrideCommand'] is False
     assert devcontainer['containerUser'] == 'root'
