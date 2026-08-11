@@ -36,7 +36,7 @@ services:
       # +------------------+
       # | Project mappings |
       # +------------------+
-      - {{ workspace_dir }}:{{ img_workspace_dir }}
+      - ${HOME}/{{ host_workspace_relative_to_home }}:{{ img_workspace_dir }}
 
       # +------------------+
       # | Dataset mappings |

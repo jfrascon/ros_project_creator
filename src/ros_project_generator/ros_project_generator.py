@@ -80,17 +80,16 @@ class RosProjectCreator:
 
             project_dir_str = str(project_dir).strip()
 
-            # If the project_dir contains only whitespace, then the project_dir is set to the
-            # current working directory (Path()).
             if project_dir_str == '':
-                self._project_dir = Path()
-            else:
-                # Remove leading and trailing whitespace, so paths like
-                # "   /home/user/project"    => "/home/user/project" or
-                # "/home/user/project   "    => "/home/user/project" or
-                # "   /home/user/project   " => "/home/user/project"
-                # are accepted.
-                self._project_dir = Path(project_dir_str).expanduser().resolve()
+                raise RosProjectCreatorException('Project directory must be a non-empty path')
+
+            # Remove leading and trailing whitespace, so paths like
+            # "   /home/user/project"    => "/home/user/project" or
+            # "/home/user/project   "    => "/home/user/project" or
+            # "   /home/user/project   " => "/home/user/project"
+            # are accepted. Relative paths, including '.', are resolved before
+            # checking that the final destination is inside the active user's home.
+            self._project_dir = Path(project_dir_str).expanduser().resolve()
 
             # Get home of the user who actually invoked the script (even under sudo)
             # When running under sudo, the environment variable SUDO_USER is set to the user who invoked sudo.
@@ -192,6 +191,7 @@ class RosProjectCreator:
                     self._image_main_user_home,
                     self._project_dir,
                     self._img_workspace_dir,
+                    user_home,
                     self._use_host_nvidia_driver,
                     use_console_log,
                     log_file,

@@ -26,6 +26,7 @@ class VscodeProjectCreator:
         img_user_home: Path,
         workspace_dir: Path,
         img_workspace_dir: Path,
+        host_user_home: Path | None = None,
         use_host_nvidia_driver: bool = False,
         use_console_log: bool = True,
         log_file: str = '',
@@ -100,6 +101,19 @@ class VscodeProjectCreator:
 
             self._workspace_dir = workspace_dir.expanduser().resolve()
 
+            if host_user_home is None:
+                self._host_user_home = Path.home().resolve()
+            else:
+                self._host_user_home = host_user_home.expanduser().resolve()
+
+            try:
+                self._host_workspace_relative_to_home = self._workspace_dir.relative_to(self._host_user_home)
+            except ValueError:
+                raise VscodeProjectCreatorException(
+                    f"Workspace path '{self._workspace_dir}' must be inside host user home '{self._host_user_home}' "
+                    'to render a portable devcontainer workspace bind mount.'
+                ) from None
+
             if not img_workspace_dir:
                 raise VscodeProjectCreatorException('Image workspace path must be provided')
 
@@ -161,7 +175,7 @@ class VscodeProjectCreator:
                     'service': service,
                     'img_id': self._img_id,
                     'use_host_nvidia_driver': self._use_host_nvidia_driver,
-                    'workspace_dir': self._workspace_dir,
+                    'host_workspace_relative_to_home': self._host_workspace_relative_to_home,
                     'img_workspace_dir': self._img_workspace_dir,
                     'img_datasets_dir': self._img_datasets_dir,
                     'img_ssh_dir': self._img_ssh_dir,

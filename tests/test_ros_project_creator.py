@@ -120,6 +120,8 @@ def test_create_ros2_project_with_vscode_renders_templates(fake_active_user: Pat
     assert '${HOST_UID:?HOST_UID must be set}' in compose_text
     assert '${HOST_UPGID:?HOST_UPGID must be set}' in compose_text
     assert '${RENDER_GID:?RENDER_GID must be set}' in compose_text
+    assert '${HOME}/demo_vscode:/home/developer/workspace' in compose_text
+    assert str(fake_active_user) not in compose_text
     assert not project_dir.joinpath('.devcontainer/.env').exists()
     assert os.access(code_devcont_script, os.X_OK)
     assert os.access(devcont_script, os.X_OK)
@@ -157,6 +159,64 @@ def test_rejects_unsupported_ros_distro(fake_active_user: Path, fake_docker_gene
             project_dir=fake_active_user / 'noetic',
             ros_distro='noetic',
             base_img='ros:noetic',
+            image_main_user='developer',
+            img_id='demo:latest',
+            use_pre_commit=False,
+            use_console_log=False,
+        )
+
+    assert fake_docker_generator == []
+
+
+def test_rejects_blank_project_dir(fake_active_user: Path, fake_docker_generator) -> None:
+    with pytest.raises(RosProjectCreatorException, match='Project directory must be a non-empty path'):
+        RosProjectCreator(
+            project_id='demo',
+            project_dir=Path('   '),
+            ros_distro='jazzy',
+            base_img='ros:jazzy',
+            image_main_user='developer',
+            img_id='demo:latest',
+            use_pre_commit=False,
+            use_console_log=False,
+        )
+
+    assert fake_docker_generator == []
+
+
+def test_rejects_relative_project_dir_outside_active_user_home(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_active_user: Path, fake_docker_generator
+) -> None:
+    outside_home = tmp_path / 'outside_home'
+    outside_home.mkdir()
+    monkeypatch.chdir(outside_home)
+
+    with pytest.raises(RosProjectCreatorException, match='Project directory must be inside'):
+        RosProjectCreator(
+            project_id='demo',
+            project_dir=Path('demo_project'),
+            ros_distro='jazzy',
+            base_img='ros:jazzy',
+            image_main_user='developer',
+            img_id='demo:latest',
+            use_pre_commit=False,
+            use_console_log=False,
+        )
+
+    assert fake_docker_generator == []
+
+
+def test_dot_project_dir_resolves_before_home_check(
+    monkeypatch: pytest.MonkeyPatch, fake_active_user: Path, fake_docker_generator
+) -> None:
+    monkeypatch.chdir(fake_active_user)
+
+    with pytest.raises(RosProjectCreatorException, match='already exists'):
+        RosProjectCreator(
+            project_id='demo',
+            project_dir=Path('.'),
+            ros_distro='jazzy',
+            base_img='ros:jazzy',
             image_main_user='developer',
             img_id='demo:latest',
             use_pre_commit=False,
