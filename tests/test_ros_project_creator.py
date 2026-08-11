@@ -122,6 +122,8 @@ def test_create_ros2_project_with_vscode_renders_templates(fake_active_user: Pat
     assert '${RENDER_GID:?RENDER_GID must be set}' in compose_text
     assert '${HOME}/demo_vscode:/home/developer/workspace' in compose_text
     assert str(fake_active_user) not in compose_text
+    assert '.gitconfig' not in compose_text
+    assert 'config/git' not in compose_text
     assert not project_dir.joinpath('.devcontainer/.env').exists()
     assert os.access(code_devcont_script, os.X_OK)
     assert os.access(devcont_script, os.X_OK)

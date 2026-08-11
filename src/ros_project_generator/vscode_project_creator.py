@@ -123,25 +123,6 @@ class VscodeProjectCreator:
             self._img_workspace_dir = img_workspace_dir
             self._use_host_nvidia_driver = use_host_nvidia_driver
 
-            # Get git config for the user running the project configuration tool and write it to the docker-compose
-            # file, in the volumes section.
-            home = Path.home()
-            global_gitconfig_file = home.joinpath('.gitconfig')
-            xdg_gitconfig_file = home.joinpath('.config/git/config')
-
-            # Check ~/.gitconfig first, as it has higher priority.
-            if global_gitconfig_file.is_file():
-                self._use_git = True
-                self._gitconfig_file = global_gitconfig_file
-            # If not found, check ~/.config/git/config (lower priority)
-            elif xdg_gitconfig_file.is_file():
-                self._use_git = True
-                self._gitconfig_file = xdg_gitconfig_file
-            # If no gitconfig file is found, remove the git_config block from the docker-compose file.
-            else:
-                self._use_git = False
-                self._gitconfig_file = None
-
             self._install_items()
         except VscodeProjectCreatorException as e:
             self._logger.error(f'{e}')
@@ -179,9 +160,6 @@ class VscodeProjectCreator:
                     'img_workspace_dir': self._img_workspace_dir,
                     'img_datasets_dir': self._img_datasets_dir,
                     'img_ssh_dir': self._img_ssh_dir,
-                    'use_git': self._use_git,
-                    'gitconfig_file': self._gitconfig_file,
-                    'img_gitconfig_file': self._img_user_home.joinpath('.gitconfig'),
                     'ros_version': self._ros_variant.get_version(),
                     'ros_distro': self._ros_variant.get_distro(),
                 },

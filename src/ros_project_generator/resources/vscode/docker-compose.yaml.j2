@@ -60,9 +60,6 @@ services:
       # +-----------------+
       # Folders
       # Files
-      {% if use_git %}
-      - {{ gitconfig_file }}:{{ img_gitconfig_file }}:ro
-      {% endif %}
 
       # +----------------------+
       # | SSH agent forwarding |
