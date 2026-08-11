@@ -13,14 +13,17 @@
       "source.organizeImports": "explicit"
     },
     "editor.detectIndentation": true,
+    "editor.editContext": false,
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
     "editor.formatOnSaveMode": "modificationsIfAvailable",
     "editor.formatOnType": true,
     "editor.lineNumbers": "relative",
-    "editor.rulers": [
-      120
-    ],
+      "editor.rulers": [
+        80,
+        100,
+        120
+      ],
     "files.associations": {
       "*.config": "properties",
       "*.json": "jsonc",
@@ -149,6 +152,9 @@
     "python.analysis.extraPaths": [
       "/opt/ros/{{ ros_distro }}/lib/python{{ python_version }}/site-packages"
     ],
+    "python.autoComplete.extraPaths": [
+      "/opt/ros/{{ ros_distro }}/lib/python{{ python_version }}/site-packages"
+      ],
     "python.analysis.typeCheckingMode": "standard",
     "python.analysis.useLibraryCodeForTypes": true,
     "[python]": {
@@ -156,9 +162,9 @@
       "editor.formatOnSave": true,
       "editor.formatOnSaveMode": "modificationsIfAvailable",
       "editor.codeActionsOnSave": {
-        "source.fixAll.ruff": "always",
         "source.organizeImports": "never",
-        "source.organizeImports.ruff": "always"
+        "source.fixAll.ruff": "explicit",
+        "source.organizeImports.ruff": "explicit"
       }
     },
     // ==========================================================================
@@ -251,8 +257,5 @@
     "xml.format.splitAttributes": "preserve",
     "xml.format.closingBracketNewLine": false,
     "xml.format.spaceBeforeEmptyCloseTag": false,
-    "python.autoComplete.extraPaths": [
-      "/opt/ros/{{ ros_distro }}/lib/python{{ python_version }}/site-packages"
-    ],
   }
 }
