@@ -152,7 +152,7 @@ class VscodeProjectCreator:
                 'vscode/devcontainer.json.j2',
                 {'service': service, 'remote_user': self._img_user, 'img_workspace_dir': self._img_workspace_dir},
             ),
-            ResourceSpec.file('.devcontainer/devcode', 'vscode/devcode', executable=True),
+            ResourceSpec.file('.devcontainer/code-devcont', 'vscode/code-devcont', executable=True),
             ResourceSpec.file('.devcontainer/devcont', 'vscode/devcont', executable=True),
             ResourceSpec.template(
                 '.devcontainer/docker-compose.yaml',
