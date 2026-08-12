@@ -30,20 +30,20 @@ require_cmd() {
 resolve_render_gid() {
     local render_device="${RENDER_DEVICE:-}"
 
-    if [[ -z ${render_device} ]]; then
+    if [ -z "${render_device}" ]; then
         render_device="$(
-            if [[ -d /dev/dri ]]; then
+            if [ -d /dev/dri ]; then
                 find /dev/dri -maxdepth 1 -type c -name 'renderD*' 2>/dev/null | sort | head -n 1
             fi
         )"
 
-        if [[ -z ${render_device} ]]; then
+        if [ -z "${render_device}" ]; then
             log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose.yaml for a headless setup."
             exit 1
         fi
     fi
 
-    if [[ ! -e ${render_device} ]]; then
+    if [ ! -e "${render_device}" ]; then
         log "ERROR: Render device ${render_device} does not exist. Set RENDER_DEVICE to an existing render device."
         exit 1
     fi
@@ -79,7 +79,7 @@ while true; do
     esac
 done
 
-if [[ $# -ne 0 ]]; then
+if [ "$#" -ne 0 ]; then
     log "ERROR: Unexpected positional arguments: $*"
     usage
     exit 2
@@ -94,7 +94,7 @@ require_cmd code
 
 host_xauthority_file="${HOST_XAUTHORITY_FILE:-/run/user/$(id -u)/docker-xwayland.xauth}"
 
-if [[ ! -f ${host_xauthority_file} ]]; then
+if [ ! -f "${host_xauthority_file}" ]; then
     log "ERROR: XAuthority file not found: ${host_xauthority_file}. Set HOST_XAUTHORITY_FILE to an existing file."
     exit 1
 fi
@@ -103,7 +103,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 workspace_dir="$(dirname "${script_dir}")"
 workspace_file="${workspace_dir}/ws.code-workspace"
 
-if [[ ! -f ${workspace_file} ]]; then
+if [ ! -f "${workspace_file}" ]; then
     log "ERROR: VS Code workspace file not found: ${workspace_file}"
     exit 1
 fi

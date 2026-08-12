@@ -32,7 +32,7 @@ require_cmd() {
 require_env() {
     local name="$1"
     local value="${!name:-}"
-    if [[ -z ${value} ]]; then
+    if [ -z "${value}" ]; then
         log "ERROR: Required environment variable ${name} is not set or is empty. Export it before running ${script_name} --up."
         exit 1
     fi
@@ -41,20 +41,20 @@ require_env() {
 resolve_render_gid() {
     local render_device="${RENDER_DEVICE:-}"
 
-    if [[ -z ${render_device} ]]; then
+    if [ -z "${render_device}" ]; then
         render_device="$(
-            if [[ -d /dev/dri ]]; then
+            if [ -d /dev/dri ]; then
                 find /dev/dri -maxdepth 1 -type c -name 'renderD*' 2>/dev/null | sort | head -n 1
             fi
         )"
 
-        if [[ -z ${render_device} ]]; then
+        if [ -z "${render_device}" ]; then
             log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose.yaml for a headless setup."
             exit 1
         fi
     fi
 
-    if [[ ! -e ${render_device} ]]; then
+    if [ ! -e "${render_device}" ]; then
         log "ERROR: Render device ${render_device} does not exist. Set RENDER_DEVICE to an existing render device."
         exit 1
     fi
@@ -66,7 +66,7 @@ write_env_var() {
     local name="$1"
     local value="$2"
 
-    if [[ -z ${value} ]]; then
+    if [ -z "${value}" ]; then
         log "ERROR: Refusing to write empty environment variable ${name}."
         exit 1
     fi
@@ -95,7 +95,7 @@ write_env_file() {
 
     host_xauthority_file="${HOST_XAUTHORITY_FILE:-/run/user/$(id -u)/docker-xwayland.xauth}"
 
-    if [[ ! -f ${host_xauthority_file} ]]; then
+    if [ ! -f "${host_xauthority_file}" ]; then
         log "ERROR: XAuthority file not found: ${host_xauthority_file}. Set HOST_XAUTHORITY_FILE to an existing file."
         exit 1
     fi
@@ -127,7 +127,7 @@ run_compose() {
 
     require_cmd docker
 
-    if [[ ! -f ${compose_file} ]]; then
+    if [ ! -f "${compose_file}" ]; then
         log "ERROR: Docker Compose file not found: ${compose_file}"
         exit 1
     fi
@@ -144,7 +144,7 @@ run_compose() {
         docker compose --project-directory "${script_dir}" --env-file "${env_file}" -f "${compose_file}" up -d
         ;;
     down)
-        if [[ ! -f ${env_file} ]]; then
+        if [ ! -f "${env_file}" ]; then
             log "ERROR: Environment file not found: ${env_file}. Run '${script_dir}/${script_name} --up' first."
             exit 1
         fi
@@ -197,19 +197,19 @@ while true; do
     esac
 done
 
-if [[ $# -ne 0 ]]; then
+if [ "$#" -ne 0 ]; then
     log "ERROR: Unexpected positional arguments: $*"
     usage
     exit 2
 fi
 
-if [[ ${UP} -eq 1 && ${DOWN} -eq 1 ]]; then
+if [ "${UP}" -eq 1 ] && [ "${DOWN}" -eq 1 ]; then
     log "ERROR: --up and --down are mutually exclusive."
     usage
     exit 2
 fi
 
-if [[ ${UP} -eq 0 && ${DOWN} -eq 0 ]]; then
+if [ "${UP}" -eq 0 ] && [ "${DOWN}" -eq 0 ]; then
     UP=1
 fi
 
@@ -217,7 +217,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 compose_file="${script_dir}/docker-compose.yaml"
 env_file="${script_dir}/.env"
 
-if [[ ${UP} -eq 1 ]]; then
+if [ "${UP}" -eq 1 ]; then
     run_compose up
 else
     run_compose down
