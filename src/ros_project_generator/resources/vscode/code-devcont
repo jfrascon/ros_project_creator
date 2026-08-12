@@ -5,7 +5,7 @@ set -euo pipefail
 script_name="$(basename "$0")"
 
 usage() {
-  cat <<EOF
+    cat <<EOF
 Usage:
   ${script_name} [options]
 
@@ -20,35 +20,35 @@ EOF
 log() { printf '[%s] %s\n' "$(date -u +'%Y-%m-%d_%H-%M-%S')" "$*"; }
 
 require_cmd() {
-  local cmd="$1"
-  if ! command -v "${cmd}" >/dev/null 2>&1; then
-    log "ERROR: Missing required command: ${cmd}"
-    exit 1
-  fi
+    local cmd="$1"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+        log "ERROR: Missing required command: ${cmd}"
+        exit 1
+    fi
 }
 
 resolve_render_gid() {
-  local render_device="${RENDER_DEVICE:-}"
+    local render_device="${RENDER_DEVICE:-}"
 
-  if [[ -z "${render_device}" ]]; then
-    render_device="$(
-      if [[ -d /dev/dri ]]; then
-        find /dev/dri -maxdepth 1 -type c -name 'renderD*' 2>/dev/null | sort | head -n 1
-      fi
-    )"
+    if [[ -z ${render_device} ]]; then
+        render_device="$(
+            if [[ -d /dev/dri ]]; then
+                find /dev/dri -maxdepth 1 -type c -name 'renderD*' 2>/dev/null | sort | head -n 1
+            fi
+        )"
 
-    if [[ -z "${render_device}" ]]; then
-      log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose.yaml for a headless setup."
-      exit 1
+        if [[ -z ${render_device} ]]; then
+            log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose.yaml for a headless setup."
+            exit 1
+        fi
     fi
-  fi
 
-  if [[ ! -e "${render_device}" ]]; then
-    log "ERROR: Render device ${render_device} does not exist. Set RENDER_DEVICE to an existing render device."
-    exit 1
-  fi
+    if [[ ! -e ${render_device} ]]; then
+        log "ERROR: Render device ${render_device} does not exist. Set RENDER_DEVICE to an existing render device."
+        exit 1
+    fi
 
-  stat -c '%g' "${render_device}"
+    stat -c '%g' "${render_device}"
 }
 
 require_cmd getopt
@@ -56,33 +56,33 @@ require_cmd getopt
 SHORT_OPTS="h"
 LONG_OPTS="help"
 PARSED_ARGS="$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@")" || {
-  usage
-  exit 2
+    usage
+    exit 2
 }
 eval set -- "${PARSED_ARGS}"
 
 while true; do
-  case "$1" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
+    case "$1" in
+    -h | --help)
+        usage
+        exit 0
+        ;;
     --)
-      shift
-      break
-      ;;
+        shift
+        break
+        ;;
     *)
-      log "ERROR: Unexpected option: $1"
-      usage
-      exit 2
-      ;;
-  esac
+        log "ERROR: Unexpected option: $1"
+        usage
+        exit 2
+        ;;
+    esac
 done
 
-if [[ "$#" -ne 0 ]]; then
-  log "ERROR: Unexpected positional arguments: $*"
-  usage
-  exit 2
+if [[ $# -ne 0 ]]; then
+    log "ERROR: Unexpected positional arguments: $*"
+    usage
+    exit 2
 fi
 
 require_cmd id
@@ -92,18 +92,29 @@ require_cmd head
 require_cmd stat
 require_cmd code
 
+host_xauthority_file="${HOST_XAUTHORITY_FILE:-/run/user/$(id -u)/docker-xwayland.xauth}"
+
+if [[ ! -f ${host_xauthority_file} ]]; then
+    log "ERROR: XAuthority file not found: ${host_xauthority_file}. Set HOST_XAUTHORITY_FILE to an existing file."
+    exit 1
+fi
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 workspace_dir="$(dirname "${script_dir}")"
 workspace_file="${workspace_dir}/ws.code-workspace"
 
-if [[ ! -f "${workspace_file}" ]]; then
-  log "ERROR: VS Code workspace file not found: ${workspace_file}"
-  exit 1
+if [[ ! -f ${workspace_file} ]]; then
+    log "ERROR: VS Code workspace file not found: ${workspace_file}"
+    exit 1
 fi
 
-export HOST_UID="$(id -u)"
-export HOST_UPGID="$(id -g)"
-export RENDER_GID="$(resolve_render_gid)"
+HOST_UID="$(id -u)"
+export HOST_UID
+HOST_UPGID="$(id -g)"
+export HOST_UPGID
+export HOST_XAUTHORITY_FILE="${host_xauthority_file}"
+RENDER_GID="$(resolve_render_gid)"
+export RENDER_GID
 
 log "Opening VS Code workspace: ${workspace_file}"
 code "${workspace_file}"

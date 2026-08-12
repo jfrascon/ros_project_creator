@@ -32,6 +32,9 @@ services:
     tty: true
     stdin_open: true
 
+    tmpfs:
+      - /run/user/${HOST_UID:?HOST_UID must be set}:mode=700,uid=${HOST_UID:?HOST_UID must be set},gid=${HOST_UPGID:?HOST_UPGID must be set}
+
     volumes:
       # +------------------+
       # | Project mappings |
@@ -47,8 +50,8 @@ services:
       # | Graphics mappings |
       # +-------------------+
       - type: bind
-        source: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR must be set}/docker-xwayland.xauth"
-        target: /tmp/docker-xwayland.xauth
+        source: "${HOST_XAUTHORITY_FILE:?HOST_XAUTHORITY_FILE must be set}"
+        target: "/run/user/${HOST_UID:?HOST_UID must be set}/docker-xwayland.xauth"
         read_only: true
         bind:
           create_host_path: false
@@ -99,7 +102,9 @@ services:
     environment:
       DISPLAY: "${DISPLAY:?DISPLAY must be set}"
       # Use the host XWayland display and the Xauthority file mounted above.
-      XAUTHORITY: "/tmp/docker-xwayland.xauth"
+      XDG_RUNTIME_DIR: "/run/user/${HOST_UID:?HOST_UID must be set}"
+      XAUTHORITY: "/run/user/${HOST_UID:?HOST_UID must be set}/docker-xwayland.xauth"
+      CONTAINER_ROS_WORKSPACE: "{{ img_workspace_dir }}"
 
       # Force Qt applications such as RViz and Gazebo to use X11 through
       # XWayland instead of attempting a native Wayland connection.

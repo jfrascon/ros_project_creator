@@ -159,8 +159,8 @@ PROJECT_DIR/
 The `.devcontainer/code-devcont` script opens `ws.code-workspace` after exporting the runtime variables required by the
 Dev Container compose file. The `.devcontainer/devcont` script starts or stops the compose project; running it without
 arguments is the same as `devcont --up`. `devcont --up` writes a local `.devcontainer/.env` file with the host UID,
-primary GID, and render device GID. `devcont --down` reuses that `.env` file and fails if it does not exist. The `.env`
-file is machine-local and ignored by git.
+primary GID, host XAuthority file, and render device GID. `devcont --down` reuses that `.env`
+file and fails if it does not exist. The `.env` file is machine-local and ignored by git.
 
 ## Tests
 

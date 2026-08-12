@@ -119,8 +119,16 @@ def test_create_ros2_project_with_vscode_renders_templates(fake_active_user: Pat
     assert 'demo/vscode:latest' in compose_text
     assert '${HOST_UID:?HOST_UID must be set}' in compose_text
     assert '${HOST_UPGID:?HOST_UPGID must be set}' in compose_text
+    assert '${HOST_XAUTHORITY_FILE:?HOST_XAUTHORITY_FILE must be set}' in compose_text
     assert '${RENDER_GID:?RENDER_GID must be set}' in compose_text
     assert '${HOME}/demo_vscode:/home/developer/workspace' in compose_text
+    assert 'XDG_RUNTIME_DIR: "/run/user/${HOST_UID:?HOST_UID must be set}"' in compose_text
+    assert 'XAUTHORITY: "/run/user/${HOST_UID:?HOST_UID must be set}/docker-xwayland.xauth"' in compose_text
+    assert 'CONTAINER_ROS_WORKSPACE: "/home/developer/workspace"' in compose_text
+    assert (
+        '- /run/user/${HOST_UID:?HOST_UID must be set}:mode=700,'
+        'uid=${HOST_UID:?HOST_UID must be set},gid=${HOST_UPGID:?HOST_UPGID must be set}' in compose_text
+    )
     assert str(fake_active_user) not in compose_text
     assert '.gitconfig' not in compose_text
     assert 'config/git' not in compose_text
@@ -129,6 +137,11 @@ def test_create_ros2_project_with_vscode_renders_templates(fake_active_user: Pat
     assert os.access(devcont_script, os.X_OK)
     assert 'getopt' in code_devcont_script.read_text()
     assert 'getopt' in devcont_script.read_text()
+    assert 'HOST_XAUTHORITY_FILE' in code_devcont_script.read_text()
+    assert 'HOST_XAUTHORITY_FILE' in devcont_script.read_text()
+    assert '/run/user/$(id -u)/docker-xwayland.xauth' in code_devcont_script.read_text()
+    assert '/run/user/$(id -u)/docker-xwayland.xauth' in devcont_script.read_text()
+    assert 'require_env XDG_RUNTIME_DIR' not in devcont_script.read_text()
     assert '--up' in devcont_script.read_text()
     assert '--down' in devcont_script.read_text()
     assert devcontainer['updateRemoteUserUID'] is True
