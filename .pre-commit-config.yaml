@@ -70,8 +70,10 @@ repos:
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: v2.16.0
     hooks:
+      # Keep sequence markers indented under their parent key. This is easier to
+      # scan than the valid but visually flat YAML produced with offset zero.
       - id: pretty-format-yaml
-        args: [--autofix, --preserve-quotes]
+        args: [--autofix, --preserve-quotes, --offset, "2"]
 
   # Shell hooks
   - repo: https://github.com/scop/pre-commit-shfmt

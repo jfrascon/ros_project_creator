@@ -1,13 +1,11 @@
-#!/usr/bin/env python3
-
 import os
 import pwd
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
-from robotics_dockers import DockerContextConfig, generate_docker_context
+from robotics_dockers import DockerContextConfig, DockerContextResult, generate_docker_context
 from robotics_dockers.errors import RoboticsDockersError
 
 from ros_project_generator.logging_utils import create_logger
@@ -34,10 +32,13 @@ class RosProjectCreator:
         self,
         project_id: str,
         project_dir: Path,
+        user: str,
+        user_id: Union[int, str],
+        primary_group_id: Union[int, str],
         ros_distro: str,
-        base_img: str,
-        image_main_user: Optional[str],
-        img_id: Optional[str],
+        img_id: Optional[str] = None,
+        primary_group: Optional[str] = None,
+        base_img: Optional[str] = None,
         use_host_nvidia_driver: bool = False,
         use_vscode_project: bool = False,
         use_pre_commit: bool = True,
@@ -49,11 +50,15 @@ class RosProjectCreator:
         Initializes the RosProjectCreator class.
         Args:
             project_id (str): The ID of the project.
-            base_dir (Path): The path where the project will be created.
+            project_dir (Path): The path where the project will be created.
+            user (str): Development user stored in the generated image.
+            user_id (int | str): Numeric UID stored in the generated image.
+            primary_group_id (int | str): Numeric primary GID stored in the generated image.
             ros_distro (str): The ROS distribution to be used.
-            base_img (str): Absolute path under the user's home where the project will be created
-            img_id (str): The image ID.
-            image_main_user (str): Main user for the image.
+            img_id (str): The image ID, or None to derive it from the project ID.
+            primary_group (str): Primary group name. Defaults to the user name.
+            base_img (str): Optional Docker base image. robotics_dockers chooses the
+                Ubuntu version associated with the ROS distribution when omitted.
             use_vscode_project (bool): Whether to create a VS Code project.
             use_pre_commit (bool): Whether to use pre-commit.
             use_console_log (bool): Whether to log to console.
@@ -125,47 +130,20 @@ class RosProjectCreator:
             self._ros_variant = RosVariant(ros_distro, ros_variant_yaml_file)
             self._assert_ros2_variant()
 
+            # robotics_dockers owns account-name and numeric-ID validation. Keep
+            # the values here only long enough to pass them to that single source
+            # of truth; validating them a second time would make the two projects
+            # drift when the identity contract changes.
+            self._user = Utilities.clean_str(user)
+            self._user_id = user_id
+            self._primary_group = Utilities.clean_str(primary_group)
+            self._primary_group_id = primary_group_id
             self._base_img = Utilities.clean_str(base_img)
-            Utilities.assert_non_empty(self._base_img, 'Base image must be a non-empty string')
-            base_img_name = str(self._base_img)
-            self._base_img = base_img_name
-
-            if not Utilities.is_valid_docker_image_name(base_img_name):
-                raise RosProjectCreatorException(
-                    f"Base image '{self._base_img}' is not a valid Docker image name. "
-                    'Valid names must start with a lowercase letter or number, '
-                    'followed by lowercase letters, numbers, underscores, or dashes.'
-                )
-
-            self._image_main_user = Utilities.clean_str(image_main_user)
-            Utilities.assert_non_empty(self._image_main_user, 'Image user must be a non-empty string')
-            image_main_user_name = str(self._image_main_user)
-            self._image_main_user = image_main_user_name
-
-            if ' ' in image_main_user_name:
-                raise RosProjectCreatorException('Image user must not contain spaces')
-
-            if self._image_main_user == 'root':
-                self._image_main_user_home = Path(f'/{self._image_main_user}')
-            else:
-                self._image_main_user_home = Path(f'/home/{self._image_main_user}')
-
-            self._img_workspace_dir = self._image_main_user_home.joinpath('workspace')
-            self._img_datasets_dir = self._image_main_user_home.joinpath('datasets')
-            self._img_ssh_dir = self._image_main_user_home.joinpath('.ssh')
 
             # If img_id is not provided, it is set to the default value.
             self._img_id = Utilities.clean_str(img_id) or f'{self._project_id}:latest'
 
-            if not Utilities.is_valid_docker_image_name(self._img_id):
-                raise RosProjectCreatorException(
-                    f"Image ID '{self._img_id}' is not a valid Docker image name. "
-                    'Valid names must start with a lowercase letter or number, '
-                    'followed by lowercase letters, numbers, underscores, or dashes.'
-                )
-
             self._use_host_nvidia_driver = use_host_nvidia_driver
-            self._assert_robotics_dockers_supported_user()
 
             # Check if the git binary exists in the system.
             self._check_git_binary_existence()
@@ -179,23 +157,19 @@ class RosProjectCreator:
 
             self._logger.info(f"Creating project '{self._project_id}'")
 
-            self._install_items()
+            docker_result = self._install_items()
 
             # Create VS Code project if requested.
             if use_vscode_project:
                 self._vscode_project_creator = VscodeProjectCreator(
-                    self._project_id,
-                    self._ros_variant.get_distro(),
-                    self._img_id,
-                    self._image_main_user,
-                    self._image_main_user_home,
-                    self._project_dir,
-                    self._img_workspace_dir,
-                    user_home,
-                    self._use_host_nvidia_driver,
-                    use_console_log,
-                    log_file,
-                    log_level,
+                    project_id=self._project_id,
+                    ros_distro=self._ros_variant.get_distro(),
+                    user=docker_result.resolved_config.user,
+                    workspace_dir=self._project_dir,
+                    source_compose_file=docker_result.context_dir.joinpath('docker-compose-dev.yaml'),
+                    use_console_log=use_console_log,
+                    log_file=log_file,
+                    log_level=log_level,
                 )
 
             self._logger.info(self._initialize_git_repo())
@@ -218,10 +192,6 @@ class RosProjectCreator:
         # Check pre-commit binary existence.
         if not shutil.which('pre-commit'):
             raise RosProjectCreatorException('pre-commit binary not found in the system')
-
-    def _assert_robotics_dockers_supported_user(self) -> None:
-        if self._image_main_user == 'root':
-            raise RosProjectCreatorException("Image user 'root' is not supported by the ROS 2 Docker generator yet")
 
     def _assert_ros2_variant(self) -> None:
         if self._ros_variant.get_version() != 2:
@@ -277,16 +247,19 @@ class RosProjectCreator:
                 ResourceSpec.file('.pre-commit-config.yaml', 'git/dot_pre-commit-config.yaml')
             )
 
-    def _install_docker_files_with_robotics_dockers(self) -> None:
+    def _install_docker_files_with_robotics_dockers(self) -> DockerContextResult:
         docker_dir = self._project_dir.joinpath('docker')
 
         try:
             self._logger.info(f"Creating ROS 2 Docker files in '{docker_dir}' using robotics_dockers")
-            generate_docker_context(
+            return generate_docker_context(
                 DockerContextConfig(
-                    image_main_user=self._image_main_user,
                     ros_distro=self._ros_variant.get_distro(),
                     img_id=self._img_id,
+                    user=self._user,
+                    user_id=self._user_id,
+                    primary_group=self._primary_group,
+                    primary_group_id=self._primary_group_id,
                     output_dir=docker_dir,
                     base_img=self._base_img,
                     use_host_nvidia_driver=self._use_host_nvidia_driver,
@@ -297,12 +270,6 @@ class RosProjectCreator:
             )
         except RoboticsDockersError as e:
             raise RosProjectCreatorException(f'robotics_dockers failed while creating Docker files: {e}') from e
-
-        generated_compose_file = docker_dir.joinpath('docker-compose-dev.yaml')
-        expected_compose_file = docker_dir.joinpath('docker-compose.yaml')
-
-        if generated_compose_file.exists():
-            generated_compose_file.replace(expected_compose_file)
 
     def _initialize_git_repo(self) -> str:
         cmd = ['git', 'init', '--initial-branch=main']
@@ -319,15 +286,16 @@ class RosProjectCreator:
 
         return result.stdout.strip()  # Return the output of the command, removing any leading/trailing whitespace
 
-    def _install_items(self) -> None:
+    def _install_items(self) -> DockerContextResult:
         self._create_items_to_install()
-        self._install_docker_files_with_robotics_dockers()
+        docker_result = self._install_docker_files_with_robotics_dockers()
         ResourceInstaller(
             resources_dir=self._resources_dir,
             target_dir=self._project_dir,
             logger=self._logger,
             exception_type=RosProjectCreatorException,
         ).install(self._items_to_install)
+        return docker_result
 
     def _install_pre_commit_config(self) -> str:
         cmd = ['pre-commit', 'install']

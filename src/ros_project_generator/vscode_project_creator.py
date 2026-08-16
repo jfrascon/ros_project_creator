@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
-
+import shutil
 from pathlib import Path
+
+import yaml
 
 from ros_project_generator.logging_utils import create_logger
 from ros_project_generator.resource_installer import ResourceInstaller, ResourceSpec
@@ -9,127 +10,70 @@ from ros_project_generator.utilities import Utilities
 
 
 class VscodeProjectCreatorException(Exception):
-    """Base exception for all errors related to VscodeProjectCreator."""
+    """Base exception for errors while creating the VS Code files."""
 
 
 class VscodeProjectCreator:
-    # ==========================================================================
-    # non-static private methods
-    # ==========================================================================
+    """Create editor files around a Compose file owned by robotics_dockers.
+
+    robotics_dockers defines the container runtime: image, devices, NVIDIA,
+    XDG, mounts and supplementary groups. This class does not reproduce that
+    configuration. It copies the generated Compose file into .devcontainer so
+    each developer receives an independent file that can be customized later.
+    """
 
     def __init__(
         self,
         project_id: str,
         ros_distro: str,
-        img_id: str,
-        img_user: str,
-        img_user_home: Path,
+        user: str,
         workspace_dir: Path,
-        img_workspace_dir: Path,
-        host_user_home: Path | None = None,
-        use_host_nvidia_driver: bool = False,
+        source_compose_file: Path,
         use_console_log: bool = True,
         log_file: str = '',
         log_level: str = 'DEBUG',
     ):
-        """Creates a new VS Code project based on templates.
-        Args:
-            ros_distro (str): ROS distro to use (e.g. 'humble')
-            img_id (str): ID of the Docker image that VS Code will use to create a container
-            img_user (str): User to use inside the container
-            img_user_home (Path): Home directory of the user inside the container (e.g. '/home/user')
-            workspace_dir (Path): Path to the project directory (e.g. '/path/to/robproj')
-            img_workspace_dir (Path): Path to the workspace in the image (e.g. '/home/user/workspaces/robproj')
-            use_host_nvidia_driver (bool): If True, use the host's NVIDIA driver. Default is False.
-            use_console_log (bool): If True, log to console. Default is True.
-            log_file (str): File to log output. Default is "" (no file).
-            log_level (str): Logging level. Default is "DEBUG".
-        Raises:
-            Exception: If any of the arguments are invalid or if the resources directory does not exist.
-        """
-
-        # The img_user_home is injected since, even though, usually home paths meet the pattern
-        # '/home/<user>', it may not be the case in some images, because it is not a requirement
-        # to meet that pattern.
-
-        # Logger construction is intentionally outside the try-except block because the
-        # exception handler below needs a valid logger to report setup failures.
         self._logger = create_logger(
             name='VscodeProjectCreator', use_console_log=use_console_log, log_file=log_file, log_level=log_level
         )
+
         try:
-            # Check the resource dir exits.
             self._resources_dir = Path(__file__).parent.joinpath('resources')
-            Utilities.assert_dir_existence(self._resources_dir, f"Path '{str(self._resources_dir)}' is required")
+            Utilities.assert_dir_existence(self._resources_dir, f"Path '{self._resources_dir}' is required")
 
             self._project_id = Utilities.clean_str(project_id)
             Utilities.assert_non_empty(self._project_id, 'Project id must be a non-empty string')
 
-            # Get the ros_variant (ros_distro, ros_version, cpp_version, c_version) associated to the passed
-            # ros_distro.
             ros_variant_yaml_file = self._resources_dir.joinpath('ros/ros_variants.yaml')
             self._ros_variant = RosVariant(ros_distro, ros_variant_yaml_file)
             self._assert_ros2_variant()
 
-            self._img_id = Utilities.clean_str(img_id)
-            Utilities.assert_non_empty(self._img_id, 'Image id must be a non-empty string')
+            self._user = Utilities.clean_str(user)
+            Utilities.assert_non_empty(self._user, 'Image user must be a non-empty string')
 
-            self._img_user = Utilities.clean_str(img_user)
-            Utilities.assert_non_empty(self._img_user, 'Image user must be a non-empty string')
-
-            # The paths on the image side, in the docker-compose file, must be absolute paths.
-            # The img_datasets_dir and the img_ssh_dir will be created from the img_user_home path,
-            # so we need the img_user_home to be an absolute path.
-            if not img_user_home:
-                raise VscodeProjectCreatorException('Image user home path must be provided')
-
-            if not img_user_home.is_absolute():
-                raise VscodeProjectCreatorException('Image user home path must be an absolute path')
-
-            self._img_user_home = img_user_home
-
-            self._img_datasets_dir = self._img_user_home.joinpath('datasets')
-            self._img_ssh_dir = self._img_user_home.joinpath('.ssh')
-
-            # The workspace_dir field cannot be None. It does not matter if it is an absolute or
-            # relative path, i.e., as long as the user provides a path. It is the responsibility
-            # of the user to provide the path, where the vscode files will be created.
-            # If the workspace directory does not exist, it does not matter, it will be created
-            # later.
             if not workspace_dir:
                 raise VscodeProjectCreatorException('Workspace path must be provided')
-
             self._workspace_dir = workspace_dir.expanduser().resolve()
 
-            if host_user_home is None:
-                self._host_user_home = Path.home().resolve()
-            else:
-                self._host_user_home = host_user_home.expanduser().resolve()
+            if not source_compose_file:
+                raise VscodeProjectCreatorException('Source Compose file must be provided')
+            self._source_compose_file = source_compose_file.expanduser().resolve()
+            Utilities.assert_file_existence(
+                self._source_compose_file,
+                f"Compose file '{self._source_compose_file}' generated by robotics_dockers is required",
+            )
 
-            try:
-                self._host_workspace_relative_to_home = self._workspace_dir.relative_to(self._host_user_home)
-            except ValueError:
-                raise VscodeProjectCreatorException(
-                    f"Workspace path '{self._workspace_dir}' must be inside host user home '{self._host_user_home}' "
-                    'to render a portable devcontainer workspace bind mount.'
-                ) from None
-
-            if not img_workspace_dir:
-                raise VscodeProjectCreatorException('Image workspace path must be provided')
-
-            if not img_workspace_dir.is_absolute():
-                raise VscodeProjectCreatorException('Image workspace path must be an absolute path')
-
-            self._img_workspace_dir = img_workspace_dir
-            self._use_host_nvidia_driver = use_host_nvidia_driver
-
+            # Dev Containers needs the service name in devcontainer.json. Read
+            # it from the generated Compose file instead of reproducing the
+            # naming rule owned by robotics_dockers.
+            self._compose_service = self._read_single_compose_service()
             self._install_items()
-        except VscodeProjectCreatorException as e:
-            self._logger.error(f'{e}')
+        except VscodeProjectCreatorException as error:
+            self._logger.error(f'{error}')
             raise
-        except Exception as e:
-            self._logger.error(f'{e}')
-            raise VscodeProjectCreatorException(f'{e}') from e
+        except Exception as error:
+            self._logger.error(f'{error}')
+            raise VscodeProjectCreatorException(f'{error}') from error
 
     def _assert_ros2_variant(self) -> None:
         if self._ros_variant.get_version() != 2:
@@ -138,33 +82,36 @@ class VscodeProjectCreator:
                 'ros-project-generator currently supports ROS 2 only.'
             )
 
-    def _create_items_to_install(self) -> None:
-        service = 'devcont'
+    def _read_single_compose_service(self) -> str:
+        try:
+            compose_data = yaml.safe_load(self._source_compose_file.read_text())
+        except yaml.YAMLError as error:
+            raise VscodeProjectCreatorException(
+                f"Compose file '{self._source_compose_file}' is not valid YAML: {error}"
+            ) from error
 
-        self._items_to_install = [
+        if not isinstance(compose_data, dict):
+            raise VscodeProjectCreatorException(
+                f"Compose file '{self._source_compose_file}' must contain a YAML mapping"
+            )
+
+        services = compose_data.get('services')
+        if not isinstance(services, dict) or len(services) != 1:
+            raise VscodeProjectCreatorException(
+                f"Compose file '{self._source_compose_file}' must define exactly one service"
+            )
+
+        return next(iter(services))
+
+    def _create_items_to_install(self) -> list[ResourceSpec]:
+        return [
             ResourceSpec.template(
                 '.devcontainer/devcontainer.json',
                 'vscode/devcontainer.json.j2',
-                {'service': service, 'remote_user': self._img_user, 'img_workspace_dir': self._img_workspace_dir},
+                {'service': self._compose_service, 'remote_user': self._user, 'img_workspace_dir': '/workspace'},
             ),
             ResourceSpec.file('.devcontainer/code-devcont', 'vscode/code-devcont', executable=True),
             ResourceSpec.file('.devcontainer/devcont', 'vscode/devcont', executable=True),
-            ResourceSpec.template(
-                '.devcontainer/docker-compose.yaml',
-                'vscode/docker-compose.yaml.j2',
-                {
-                    'service': service,
-                    'img_id': self._img_id,
-                    'use_host_nvidia_driver': self._use_host_nvidia_driver,
-                    'host_workspace_relative_to_home': self._host_workspace_relative_to_home,
-                    'img_workspace_dir': self._img_workspace_dir,
-                    'img_datasets_dir': self._img_datasets_dir,
-                    'img_ssh_dir': self._img_ssh_dir,
-                    'ros_version': self._ros_variant.get_version(),
-                    'ros_distro': self._ros_variant.get_distro(),
-                },
-                executable=True,
-            ),
             ResourceSpec.template(
                 '.vscode/c_cpp_properties.json',
                 'vscode/c_cpp_properties.json.j2',
@@ -187,11 +134,17 @@ class VscodeProjectCreator:
         ]
 
     def _install_items(self) -> None:
-        self._create_items_to_install()
         ResourceInstaller(
             resources_dir=self._resources_dir,
             target_dir=self._workspace_dir,
             logger=self._logger,
             exception_type=VscodeProjectCreatorException,
             replace_existing=True,
-        ).install(self._items_to_install)
+        ).install(self._create_items_to_install())
+
+        # Keep two physical Compose files. The Docker copy remains the normal
+        # robotics_dockers output; this second copy belongs to the developer's
+        # Dev Container and may be edited without changing the first one.
+        devcontainer_compose_file = self._workspace_dir.joinpath('.devcontainer/docker-compose.yaml')
+        shutil.copyfile(self._source_compose_file, devcontainer_compose_file)
+        devcontainer_compose_file.chmod(0o664)

@@ -45,17 +45,32 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> No
             'project_dir', type=str, help="Path where the project will be created (e.g. '~/projects/botzilla')"
         )
 
-        parser.add_argument('base_img', type=str, help="Base Docker image to use (e.g. 'ubuntu:24.04')")
+        parser.add_argument(
+            'user_name', type=str, metavar='user-name', help='Development user name stored in the Docker image'
+        )
 
-        parser.add_argument('ros_distro', type=str, help=f'ROS distro to use: {supported_ros_distros}')
+        parser.add_argument('user_id', type=str, metavar='user-id', help='Development user ID stored in the image')
 
         parser.add_argument(
-            '-u',
-            '--image-main-user',
+            'group_id', type=str, metavar='group-id', help='Development user primary group ID stored in the image'
+        )
+
+        parser.add_argument('ros_distro', type=str, metavar='ros-distro', help=f'ROS distro: {supported_ros_distros}')
+
+        parser.add_argument(
+            '--group',
             type=str,
-            default='dev',
-            metavar='USER',
-            help='User to run containers for the resulting image. Default: dev.',
+            default=None,
+            metavar='GROUP_NAME',
+            help='Development user primary group name. Default: user-name.',
+        )
+
+        parser.add_argument(
+            '--base-img',
+            type=str,
+            default=None,
+            metavar='IMAGE',
+            help='Base Docker image. Default: the Ubuntu version associated with ros-distro.',
         )
 
         parser.add_argument(
@@ -96,9 +111,12 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> No
         RosProjectCreator(
             project_id=args.project_id,
             project_dir=Path(args.project_dir),
+            user=args.user_name,
+            user_id=args.user_id,
+            primary_group=args.group,
+            primary_group_id=args.group_id,
             ros_distro=args.ros_distro,
             base_img=args.base_img,
-            image_main_user=args.image_main_user,
             img_id=args.img_id,
             use_host_nvidia_driver=args.use_host_nvidia_driver,
             use_vscode_project=not args.no_vscode,

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# Undefined variables and failed pipelines are errors. Individual commands are
+# checked explicitly below so their failure messages identify the real action.
+set -uo pipefail
 
 script_name="$(basename "$0")"
 
@@ -59,7 +61,10 @@ PARSED_ARGS="$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --n
     usage
     exit 2
 }
-eval set -- "${PARSED_ARGS}"
+if ! eval set -- "${PARSED_ARGS}"; then
+    log "ERROR: Failed to parse command-line options."
+    exit 2
+fi
 
 while true; do
     case "$1" in
@@ -99,7 +104,10 @@ if [ ! -f "${host_xauthority_file}" ]; then
     exit 1
 fi
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || {
+    log "ERROR: Failed to resolve the directory containing ${script_name}."
+    exit 1
+}
 workspace_dir="$(dirname "${script_dir}")"
 workspace_file="${workspace_dir}/ws.code-workspace"
 
@@ -108,13 +116,18 @@ if [ ! -f "${workspace_file}" ]; then
     exit 1
 fi
 
-HOST_UID="$(id -u)"
-export HOST_UID
-HOST_UPGID="$(id -g)"
-export HOST_UPGID
+# The Compose file uses an explicit host path because the project may be opened
+# from a shell whose current directory is unrelated to the generated workspace.
+export HOST_ROS_WORKSPACE="${workspace_dir}"
 export HOST_XAUTHORITY_FILE="${host_xauthority_file}"
-RENDER_GID="$(resolve_render_gid)"
+RENDER_GID="$(resolve_render_gid)" || {
+    log "ERROR: Failed to read the render-device GID."
+    exit 1
+}
 export RENDER_GID
 
 log "Opening VS Code workspace: ${workspace_file}"
-code "${workspace_file}"
+if ! code "${workspace_file}"; then
+    log "ERROR: VS Code failed to open ${workspace_file}."
+    exit 1
+fi
