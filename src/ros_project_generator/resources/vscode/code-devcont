@@ -5,6 +5,7 @@
 set -uo pipefail
 
 script_name="$(basename "$0")"
+image_name='{{ image_name }}'
 
 usage() {
     cat <<EOF
@@ -40,7 +41,7 @@ resolve_render_gid() {
         )"
 
         if [ -z "${render_device}" ]; then
-            log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose.yaml for a headless setup."
+            log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose-dev.yaml for a headless setup."
             exit 1
         fi
     fi
@@ -96,6 +97,35 @@ require_cmd sort
 require_cmd head
 require_cmd stat
 require_cmd code
+require_cmd docker
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || {
+    log "ERROR: Failed to resolve the directory containing ${script_name}."
+    exit 1
+}
+workspace_dir="$(dirname "${script_dir}")"
+identity_loader="${script_dir}/robotics_dockers_identity.sh"
+identity_helper="${workspace_dir}/docker/robotics_dockers_user_env.py"
+
+if [ ! -f "${identity_loader}" ]; then
+    log "ERROR: Image identity loader not found: ${identity_loader}"
+    exit 1
+fi
+
+# The loader path is calculated from this generated script's location, so
+# ShellCheck cannot resolve it while checking the source template.
+# shellcheck disable=SC1090
+. "${identity_loader}"
+
+if [ -z "${DISPLAY:-}" ]; then
+    log 'ERROR: Required environment variable DISPLAY is not set or is empty.'
+    exit 1
+fi
+
+if ! load_robotics_dockers_image_identity "${image_name}" "${identity_helper}"; then
+    log "ERROR: Could not read the development identity from Docker image ${image_name}."
+    exit 1
+fi
 
 host_xauthority_file="${HOST_XAUTHORITY_FILE:-/run/user/$(id -u)/docker-xwayland.xauth}"
 
@@ -104,11 +134,6 @@ if [ ! -f "${host_xauthority_file}" ]; then
     exit 1
 fi
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || {
-    log "ERROR: Failed to resolve the directory containing ${script_name}."
-    exit 1
-}
-workspace_dir="$(dirname "${script_dir}")"
 workspace_file="${workspace_dir}/ws.code-workspace"
 
 if [ ! -f "${workspace_file}" ]; then

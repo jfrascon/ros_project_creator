@@ -3,7 +3,7 @@ import pwd
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from robotics_dockers import DockerContextConfig, DockerContextResult, generate_docker_context
 from robotics_dockers.errors import RoboticsDockersError
@@ -32,12 +32,8 @@ class RosProjectCreator:
         self,
         project_id: str,
         project_dir: Path,
-        user: str,
-        user_id: Union[int, str],
-        primary_group_id: Union[int, str],
         ros_distro: str,
         img_id: Optional[str] = None,
-        primary_group: Optional[str] = None,
         base_img: Optional[str] = None,
         use_host_nvidia_driver: bool = False,
         use_vscode_project: bool = False,
@@ -51,12 +47,8 @@ class RosProjectCreator:
         Args:
             project_id (str): The ID of the project.
             project_dir (Path): The path where the project will be created.
-            user (str): Development user stored in the generated image.
-            user_id (int | str): Numeric UID stored in the generated image.
-            primary_group_id (int | str): Numeric primary GID stored in the generated image.
             ros_distro (str): The ROS distribution to be used.
             img_id (str): The image ID, or None to derive it from the project ID.
-            primary_group (str): Primary group name. Defaults to the user name.
             base_img (str): Optional Docker base image. robotics_dockers chooses the
                 Ubuntu version associated with the ROS distribution when omitted.
             use_vscode_project (bool): Whether to create a VS Code project.
@@ -130,14 +122,6 @@ class RosProjectCreator:
             self._ros_variant = RosVariant(ros_distro, ros_variant_yaml_file)
             self._assert_ros2_variant()
 
-            # robotics_dockers owns account-name and numeric-ID validation. Keep
-            # the values here only long enough to pass them to that single source
-            # of truth; validating them a second time would make the two projects
-            # drift when the identity contract changes.
-            self._user = Utilities.clean_str(user)
-            self._user_id = user_id
-            self._primary_group = Utilities.clean_str(primary_group)
-            self._primary_group_id = primary_group_id
             self._base_img = Utilities.clean_str(base_img)
 
             # If img_id is not provided, it is set to the default value.
@@ -164,9 +148,8 @@ class RosProjectCreator:
                 self._vscode_project_creator = VscodeProjectCreator(
                     project_id=self._project_id,
                     ros_distro=self._ros_variant.get_distro(),
-                    user=docker_result.resolved_config.user,
                     workspace_dir=self._project_dir,
-                    source_compose_file=docker_result.context_dir.joinpath('docker-compose-dev.yaml'),
+                    source_compose_file=docker_result.context_dir.joinpath('compose_files/docker-compose.yaml'),
                     use_console_log=use_console_log,
                     log_file=log_file,
                     log_level=log_level,
@@ -256,13 +239,14 @@ class RosProjectCreator:
                 DockerContextConfig(
                     ros_distro=self._ros_variant.get_distro(),
                     img_id=self._img_id,
-                    user=self._user,
-                    user_id=self._user_id,
-                    primary_group=self._primary_group,
-                    primary_group_id=self._primary_group_id,
                     output_dir=docker_dir,
                     base_img=self._base_img,
                     use_host_nvidia_driver=self._use_host_nvidia_driver,
+                    # A generated ROS project has a real workspace. Enable the
+                    # mount in both the production Compose file and the copy
+                    # used by Dev Containers. robotics_dockers leaves this
+                    # mapping commented for standalone image contexts.
+                    enable_workspace_mount=True,
                     meta_title=f'{self._project_id} ROS 2 Docker image',
                     meta_desc=f'Docker image for the {self._project_id} ROS 2 development project',
                     rosdep_packages_dir='../src',

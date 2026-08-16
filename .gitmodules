@@ -1,4 +1,0 @@
-[submodule "extern/robotics_dockers"]
-	path = extern/robotics_dockers
-	url = https://github.com/jfrascon/robotics_dockers.git
-	branch = ros2

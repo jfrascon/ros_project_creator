@@ -26,7 +26,6 @@ class VscodeProjectCreator:
         self,
         project_id: str,
         ros_distro: str,
-        user: str,
         workspace_dir: Path,
         source_compose_file: Path,
         use_console_log: bool = True,
@@ -48,9 +47,6 @@ class VscodeProjectCreator:
             self._ros_variant = RosVariant(ros_distro, ros_variant_yaml_file)
             self._assert_ros2_variant()
 
-            self._user = Utilities.clean_str(user)
-            Utilities.assert_non_empty(self._user, 'Image user must be a non-empty string')
-
             if not workspace_dir:
                 raise VscodeProjectCreatorException('Workspace path must be provided')
             self._workspace_dir = workspace_dir.expanduser().resolve()
@@ -66,7 +62,7 @@ class VscodeProjectCreator:
             # Dev Containers needs the service name in devcontainer.json. Read
             # it from the generated Compose file instead of reproducing the
             # naming rule owned by robotics_dockers.
-            self._compose_service = self._read_single_compose_service()
+            self._compose_service, self._image_name = self._read_single_compose_service()
             self._install_items()
         except VscodeProjectCreatorException as error:
             self._logger.error(f'{error}')
@@ -82,7 +78,7 @@ class VscodeProjectCreator:
                 'ros-project-generator currently supports ROS 2 only.'
             )
 
-    def _read_single_compose_service(self) -> str:
+    def _read_single_compose_service(self) -> tuple[str, str]:
         try:
             compose_data = yaml.safe_load(self._source_compose_file.read_text())
         except yaml.YAMLError as error:
@@ -101,17 +97,29 @@ class VscodeProjectCreator:
                 f"Compose file '{self._source_compose_file}' must define exactly one service"
             )
 
-        return next(iter(services))
+        service_name = next(iter(services))
+        service = services[service_name]
+        if not isinstance(service, dict) or not isinstance(service.get('image'), str) or not service['image'].strip():
+            raise VscodeProjectCreatorException(
+                f"Service '{service_name}' in '{self._source_compose_file}' must name one Docker image"
+            )
+
+        return service_name, service['image'].strip()
 
     def _create_items_to_install(self) -> list[ResourceSpec]:
         return [
             ResourceSpec.template(
                 '.devcontainer/devcontainer.json',
                 'vscode/devcontainer.json.j2',
-                {'service': self._compose_service, 'remote_user': self._user, 'img_workspace_dir': '/workspace'},
+                {'service': self._compose_service, 'img_workspace_dir': '/workspace'},
             ),
-            ResourceSpec.file('.devcontainer/code-devcont', 'vscode/code-devcont', executable=True),
-            ResourceSpec.file('.devcontainer/devcont', 'vscode/devcont', executable=True),
+            ResourceSpec.template(
+                '.devcontainer/code-devcont', 'vscode/code-devcont', {'image_name': self._image_name}, executable=True
+            ),
+            ResourceSpec.template(
+                '.devcontainer/devcont', 'vscode/devcont', {'image_name': self._image_name}, executable=True
+            ),
+            ResourceSpec.file('.devcontainer/robotics_dockers_identity.sh', 'vscode/robotics_dockers_identity.sh'),
             ResourceSpec.template(
                 '.vscode/c_cpp_properties.json',
                 'vscode/c_cpp_properties.json.j2',
@@ -145,6 +153,6 @@ class VscodeProjectCreator:
         # Keep two physical Compose files. The Docker copy remains the normal
         # robotics_dockers output; this second copy belongs to the developer's
         # Dev Container and may be edited without changing the first one.
-        devcontainer_compose_file = self._workspace_dir.joinpath('.devcontainer/docker-compose.yaml')
+        devcontainer_compose_file = self._workspace_dir.joinpath('.devcontainer/docker-compose-dev.yaml')
         shutil.copyfile(self._source_compose_file, devcontainer_compose_file)
         devcontainer_compose_file.chmod(0o664)

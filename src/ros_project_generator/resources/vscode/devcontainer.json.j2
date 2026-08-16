@@ -1,10 +1,9 @@
 {
-    "dockerComposeFile": "docker-compose.yaml",
+    "dockerComposeFile": "docker-compose-dev.yaml",
     "service": "{{ service }}",
     "shutdownAction": "stopCompose",
     "updateRemoteUserUID": false,
     "overrideCommand": false,
-    "remoteUser": "{{ remote_user }}",
     "workspaceFolder": "{{ img_workspace_dir }}",
     "customizations": {
         "vscode": {

@@ -1,13 +1,19 @@
 [project]
 name = "ros-project-generator"
-version = "1.0.0"
+version = "2.0.0"
 description = "A tool for generating ROS projects with automation and DevOps practices"
 readme = "README.md"
 authors = [{ name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" }]
 maintainers = [{ name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" }]
 license = { text = "MIT" }
-requires-python = ">=3.9"
-dependencies = ["argcomplete", "jinja2", "pre-commit", "PyYAML"]
+requires-python = ">=3.10"
+dependencies = [
+  "argcomplete",
+  "jinja2",
+  "pre-commit",
+  "PyYAML",
+  "robotics-dockers @ git+https://github.com/jfrascon/robotics_dockers.git@v0.2.0",
+]
 keywords = ["ROS", "automation", "project generator", "Robotics DevOps"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -15,7 +21,6 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -48,8 +53,18 @@ include = [
   "LICENSE*",
 ]
 
+[tool.hatch.metadata]
+# Hatch requires an explicit opt-in before it accepts a PEP 508 dependency
+# that points directly to a Git repository.
+allow-direct-references = true
+
 [tool.uv]
 managed = true
+
+[tool.pytest.ini_options]
+# Only collect this project's tests. Dependency test suites belong to their
+# respective installed projects.
+testpaths = ["tests"]
 
 # ==============================================================================
 # Ruff configuration (formatter + linter)

@@ -21,10 +21,6 @@ Usage example:
     creator = RosProjectCreator(
         project_id="myrobot",
         project_dir=Path("/home/user/dev/myrobot"),
-        user="developer",
-        user_id="1000",
-        primary_group="developer",
-        primary_group_id="1000",
         ros_distro="humble",
         base_img="eutrob/eut_ros:humble",
         img_id="myrobot:latest",
