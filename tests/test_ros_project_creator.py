@@ -216,7 +216,7 @@ def test_create_ros2_project_with_vscode_copies_the_project_compose(fake_active_
     assert 'IMAGE_USER_PRIMARY_GROUP_ID' in devcont_script.read_text()
     assert 'robotics_dockers_user_env.py' in devcont_script.read_text()
     assert 'COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-demo}"' in code_devcont_script.read_text()
-    assert 'write_env_var COMPOSE_PROJECT_NAME' in devcont_script.read_text()
+    assert 'print_compose_env_assignment COMPOSE_PROJECT_NAME' in devcont_script.read_text()
     assert 'docker image inspect' not in code_devcont_script.read_text()
     assert 'docker image inspect' not in devcont_script.read_text()
     assert 'HOST_UID' not in code_devcont_script.read_text()
