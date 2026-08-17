@@ -8,8 +8,7 @@ services:
     privileged: false
 
     # Keep Docker's default security profiles enabled.
-    # Uncomment an option only after confirming that this specific profile
-    # blocks a required command.
+    # Uncomment an option only after confirming that this specific profile blocks a required command.
     # security_opt:
     #   # Disable Docker's default syscall filter.
     #   # Added capabilities normally adjust that filter automatically, so use this only for a
@@ -58,8 +57,8 @@ services:
     network_mode: host
 
     # Gives the container a larger private /dev/shm.
-    # This is useful for ROS 2, Gazebo, RViz, cameras, OpenCV,
-    # Python multiprocessing and large DDS messages.
+    # This is useful for ROS 2, Gazebo, RViz, cameras, OpenCV, Python multiprocessing and large DDS
+    # messages.
     # Ref: https://docs.nvidia.com/deeplearning/frameworks/user-guide/index.html#setincshmem
     shm_size: "2gb"
 
@@ -85,26 +84,27 @@ services:
 
     tmpfs:
       # Compose creates the volatile XDG directory with the same numeric identity that was stored in
-      # the image. The entrypoint validates it but never changes its mode or ownership.
+      # the image.
+      # The entrypoint validates it but never changes its mode or ownership.
       - "/run/user/${IMAGE_USER_ID:?IMAGE_USER_ID required}:mode=700,uid=${IMAGE_USER_ID:?IMAGE_USER_ID required},gid=${IMAGE_USER_PRIMARY_GROUP_ID:?IMAGE_USER_PRIMARY_GROUP_ID required}"
 
     volumes:
       # +------------------+
       # | Project mappings |
       # +------------------+
-      # Keep project mounts outside the development home so they cannot hide the environment files
-      # installed there. No runtime ownership repair occurs.
-      # The :? form makes Compose stop during interpolation with the stated explanation when a
+      # Keep project mounts outside the development user's home so their container paths do not
+      # depend on a particular user name or home directory.
+      # Stable paths such as /workspace and /datasets let the same Compose structure work with
+      # images that use different development accounts, while keeping mounted project data separate
+      # from personal configuration and tools installed in the home directory.
+      # The :? form makes Compose stop during interpolation with the provided explanation when a
       # required local value is unset or empty.
-      # ros_project_generator knows that this image belongs to the generated
-      # project. HOST_WORKSPACE selects the checkout on the machine that starts
-      # this particular Compose deployment.
       - type: bind
         source: "${HOST_WORKSPACE:?HOST_WORKSPACE must match the workspace path on this host}"
         target: "{{ img_workspace_dir }}"
         bind:
-          # A wrong host path must stop startup instead of creating an empty
-          # directory that hides the expected workspace contents.
+          # A wrong host path must stop startup instead of creating an empty directory that hides
+          # the expected workspace contents.
           create_host_path: false
 
       # +------------------+
@@ -116,10 +116,9 @@ services:
       # +-------------------+
       # | Graphics mappings |
       # +-------------------+
-      # The host-side installer generates the XWayland authentication file
-      # before this service is created:
-      #
-      #   scripts/install-docker-gui-support.sh
+      # The host-side installer generates the XWayland authentication file before this service is
+      # created:
+      # scripts/install-docker-gui-support.sh
       - type: bind
         source: "${HOST_XAUTHORITY_FILE:?HOST_XAUTHORITY_FILE must match the Xauthority file path on this host}"
         target: "/run/user/${IMAGE_USER_ID:?IMAGE_USER_ID required}/docker-xwayland.xauth"
