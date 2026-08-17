@@ -22,6 +22,56 @@ EOF
 
 log() { printf '[%s] %s\n' "$(date -u +'%Y-%m-%d_%H-%M-%S')" "$*"; }
 
+load_robotics_dockers_image_identity() {
+    local image_name="${1}"
+    local identity_helper="${2}"
+    local image_environment
+    local variable_name
+    local variable_value
+
+    if [ ! -f "${identity_helper}" ]; then
+        log "ERROR: Image identity helper not found: ${identity_helper}"
+        return 1
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        log 'ERROR: Python 3 is required to inspect the robotics-dockers image identity.'
+        return 1
+    fi
+
+    # The Python helper owns the parsing and validation of the image metadata.
+    # This launcher only extracts the two generic values required by Compose.
+    image_environment="$(python3 "${identity_helper}" "${image_name}")" || return 1
+
+    IMAGE_USER_ID=''
+    IMAGE_USER_PRIMARY_GROUP_ID=''
+    while IFS='=' read -r variable_name variable_value; do
+        case "${variable_name}" in
+        IMAGE_USER_ID)
+            IMAGE_USER_ID="${variable_value}"
+            ;;
+        IMAGE_USER_PRIMARY_GROUP_ID)
+            IMAGE_USER_PRIMARY_GROUP_ID="${variable_value}"
+            ;;
+        esac
+    done <<<"${image_environment}"
+
+    # The Python helper guarantees decimal values in the supported range. The
+    # shell only verifies that its expected output fields were received.
+    if [ -z "${IMAGE_USER_ID}" ]; then
+        log 'ERROR: Image identity helper returned no IMAGE_USER_ID value.'
+        return 1
+    fi
+
+    if [ -z "${IMAGE_USER_PRIMARY_GROUP_ID}" ]; then
+        log 'ERROR: Image identity helper returned no IMAGE_USER_PRIMARY_GROUP_ID value.'
+        return 1
+    fi
+
+    export IMAGE_USER_ID
+    export IMAGE_USER_PRIMARY_GROUP_ID
+}
+
 require_cmd() {
     local cmd="$1"
     if ! command -v "${cmd}" >/dev/null 2>&1; then
@@ -53,8 +103,6 @@ resolve_render_gid() {
 
     stat -c '%g' "${render_device}"
 }
-
-require_cmd getopt
 
 SHORT_OPTS="h"
 LONG_OPTS="help"
@@ -91,11 +139,10 @@ if [ "$#" -ne 0 ]; then
     exit 2
 fi
 
-require_cmd id
-require_cmd find
-require_cmd sort
-require_cmd head
-require_cmd stat
+# Check only the two external applications that this launcher coordinates.
+# Commands such as getopt, id, find, sort, head and stat are normal operating
+# system tools. If one of them is missing or fails, its invocation reports the
+# problem at the operation that needs it.
 require_cmd code
 require_cmd docker
 
@@ -104,18 +151,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || {
     exit 1
 }
 workspace_dir="$(dirname "${script_dir}")"
-identity_loader="${script_dir}/robotics_dockers_identity.sh"
 identity_helper="${workspace_dir}/docker/robotics_dockers_user_env.py"
-
-if [ ! -f "${identity_loader}" ]; then
-    log "ERROR: Image identity loader not found: ${identity_loader}"
-    exit 1
-fi
-
-# The loader path is calculated from this generated script's location, so
-# ShellCheck cannot resolve it while checking the source template.
-# shellcheck disable=SC1090
-. "${identity_loader}"
 
 if [ -z "${DISPLAY:-}" ]; then
     log 'ERROR: Required environment variable DISPLAY is not set or is empty.'
@@ -143,7 +179,7 @@ fi
 
 # The Compose file uses an explicit host path because the project may be opened
 # from a shell whose current directory is unrelated to the generated workspace.
-export HOST_ROS_WORKSPACE="${workspace_dir}"
+export HOST_WORKSPACE="${workspace_dir}"
 export HOST_XAUTHORITY_FILE="${host_xauthority_file}"
 RENDER_GID="$(resolve_render_gid)" || {
     log "ERROR: Failed to read the render-device GID."

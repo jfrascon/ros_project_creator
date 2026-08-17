@@ -119,7 +119,6 @@ class VscodeProjectCreator:
             ResourceSpec.template(
                 '.devcontainer/devcont', 'vscode/devcont', {'image_name': self._image_name}, executable=True
             ),
-            ResourceSpec.file('.devcontainer/robotics_dockers_identity.sh', 'vscode/robotics_dockers_identity.sh'),
             ResourceSpec.template(
                 '.vscode/c_cpp_properties.json',
                 'vscode/c_cpp_properties.json.j2',
