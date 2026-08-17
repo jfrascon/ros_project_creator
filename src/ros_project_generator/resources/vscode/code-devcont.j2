@@ -7,6 +7,11 @@ set -uo pipefail
 script_name="$(basename "$0")"
 image_name='{{ image_name }}'
 
+# The generated project ID is a useful default, while an existing host value
+# still allows two checkouts or deployments to use distinct Compose projects.
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-{{ project_id }}}"
+export COMPOSE_PROJECT_NAME
+
 usage() {
     cat <<EOF
 Usage:
@@ -45,6 +50,7 @@ load_robotics_dockers_image_identity() {
 
     IMAGE_USER_ID=''
     IMAGE_USER_PRIMARY_GROUP_ID=''
+
     while IFS='=' read -r variable_name variable_value; do
         case "${variable_name}" in
         IMAGE_USER_ID)
@@ -91,7 +97,7 @@ resolve_render_gid() {
         )"
 
         if [ -z "${render_device}" ]; then
-            log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose-dev.yaml for a headless setup."
+            log "ERROR: No DRM render device found under /dev/dri. Set RENDER_DEVICE=/path/to/renderD* or adapt docker-compose.yaml for a headless setup."
             exit 1
         fi
     fi

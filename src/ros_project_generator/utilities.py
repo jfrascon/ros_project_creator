@@ -72,6 +72,16 @@ class Utilities:
         return string.strip() if string is not None else None
 
     @staticmethod
+    def is_valid_project_id(project_id: str) -> bool:
+        """Return whether a project id is also a valid Compose project name.
+
+        The generated project id becomes the default Docker Compose project
+        name. Validating it here prevents project generation from succeeding
+        with a value that Compose will reject later.
+        """
+        return bool(re.fullmatch(r'[a-z0-9][a-z0-9_-]*', project_id))
+
+    @staticmethod
     def is_valid_docker_image_name(name: str) -> bool:
         """
         Validate a Docker image name according to Docker's official naming rules.

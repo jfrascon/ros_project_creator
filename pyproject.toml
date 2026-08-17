@@ -5,7 +5,7 @@ description = "A tool for generating ROS projects with automation and DevOps pra
 readme = "README.md"
 authors = [{ name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" }]
 maintainers = [{ name = "Juan Francisco Rascon", email = "jfrascon@gmail.com" }]
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
   "argcomplete",
@@ -27,15 +27,15 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://ice.eurecat.org/gitlab/robotics-automation/ros-project-generator"
-Issues = "https://ice.eurecat.org/gitlab/robotics-automation/ros-project-generator/issues"
-Homepage = "https://ice.eurecat.org/gitlab/robotics-automation/ros-project-generator"
+Repository = "https://github.com/jfrascon/ros_project_generator"
+Issues = "https://github.com/jfrascon/ros_project_generator/issues"
+Homepage = "https://github.com/jfrascon/ros_project_generator"
 
 [project.scripts]
 ros-project = "ros_project_generator.cli:main"
 
 [project.optional-dependencies]
-dev = ["black", "pytest"]
+dev = ["build", "pre-commit", "pytest", "ruff"]
 
 [build-system]
 requires = ["hatchling"]

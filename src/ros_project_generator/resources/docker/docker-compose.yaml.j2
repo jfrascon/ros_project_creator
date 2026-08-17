@@ -1,0 +1,270 @@
+# https://docs.docker.com/compose/environment-variables/#the-env-file
+name: "${COMPOSE_PROJECT_NAME:-{{ project_id }}}"
+
+services:
+  {{ service }}:
+    image: {{ img_id }}
+
+    privileged: false
+
+    # Keep Docker's default security profiles enabled.
+    # Uncomment an option only after confirming that this specific profile
+    # blocks a required command.
+    # security_opt:
+    #   # Disable Docker's default syscall filter.
+    #   # Added capabilities normally adjust that filter automatically, so use this only for a
+    #   # confirmed seccomp denial.
+    #   # It substantially reduces container isolation.
+    #   - seccomp=unconfined
+    #   # Disable the Docker AppArmor profile on hosts that use AppArmor.
+    #   - apparmor=unconfined
+
+    # Add only the individual Linux capabilities required by the project.
+    # cap_add:
+    #   # Perform a broad set of system administration operations, including some mount and
+    #   # namespace operations.
+    #   # This is close to privileged access and should be the last capability considered.
+    #   - SYS_ADMIN
+    #   # Trace or debug processes that normal ownership checks would reject.
+    #   - SYS_PTRACE
+    #   # Use Linux performance monitoring tools such as perf.
+    #   # Host kernel settings can still restrict which events the container may inspect.
+    #   - PERFMON
+    #   # Raise process priority, set CPU affinity or use real-time scheduling.
+    #   # Real-time scheduling also needs matching host and ulimit settings.
+    #   - SYS_NICE
+    #   # Lock memory so selected pages cannot be swapped out.
+    #   # Real-time and accelerator software may need this together with a memlock ulimit.
+    #   - IPC_LOCK
+    #   # Create or modify network interfaces, routes and firewall settings.
+    #   - NET_ADMIN
+
+    # Capabilities and resource limits solve different parts of the same restriction.
+    # Enable only the limits required by the application.
+    # ulimits:
+    #   # Complements SYS_NICE when a process uses real-time scheduling.
+    #   # The Docker daemon and host kernel must also allow real-time CPU time.
+    #   rtprio:
+    #     soft: 99
+    #     hard: 99
+    #   # Complements IPC_LOCK when a process must keep memory out of swap.
+    #   # Unlimited locked memory should be granted only when it is required.
+    #   memlock:
+    #     soft: -1
+    #     hard: -1
+
+    # ROS 2/DDS development is usually simpler with host networking,
+    # especially for discovery, multicast/unicast and robot/sensor networks.
+    network_mode: host
+
+    # Gives the container a larger private /dev/shm.
+    # This is useful for ROS 2, Gazebo, RViz, cameras, OpenCV,
+    # Python multiprocessing and large DDS messages.
+    # Ref: https://docs.nvidia.com/deeplearning/frameworks/user-guide/index.html#setincshmem
+    shm_size: "2gb"
+
+    # Enable only if shared-memory IPC between host and container is required.
+    # Usually not needed when all ROS 2 nodes run inside the same container.
+    # ipc: host
+
+    tty: true
+    stdin_open: true
+
+    {% if use_host_nvidia_driver %}
+    # Modern way to expose NVIDIA GPU (requires NVIDIA Container Toolkit).
+    # Replaces the legacy 'runtime: nvidia' approach.
+    # Ref: https://docs.docker.com/compose/how-tos/gpu-support/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    {% endif %}
+
+    tmpfs:
+      # Compose creates the volatile XDG directory with the same numeric identity that was stored in
+      # the image. The entrypoint validates it but never changes its mode or ownership.
+      - "/run/user/${IMAGE_USER_ID:?IMAGE_USER_ID required}:mode=700,uid=${IMAGE_USER_ID:?IMAGE_USER_ID required},gid=${IMAGE_USER_PRIMARY_GROUP_ID:?IMAGE_USER_PRIMARY_GROUP_ID required}"
+
+    volumes:
+      # +------------------+
+      # | Project mappings |
+      # +------------------+
+      # Keep project mounts outside the development home so they cannot hide the environment files
+      # installed there. No runtime ownership repair occurs.
+      # The :? form makes Compose stop during interpolation with the stated explanation when a
+      # required local value is unset or empty.
+      # ros_project_generator knows that this image belongs to the generated
+      # project. HOST_WORKSPACE selects the checkout on the machine that starts
+      # this particular Compose deployment.
+      - type: bind
+        source: "${HOST_WORKSPACE:?HOST_WORKSPACE must match the workspace path on this host}"
+        target: "{{ img_workspace_dir }}"
+        bind:
+          # A wrong host path must stop startup instead of creating an empty
+          # directory that hides the expected workspace contents.
+          create_host_path: false
+
+      # +------------------+
+      # | Dataset mappings |
+      # +------------------+
+      # The suggested target is also outside the development home.
+      #- ~/datasets:{{ img_datasets_dir }}
+
+      # +-------------------+
+      # | Graphics mappings |
+      # +-------------------+
+      # The host-side installer generates the XWayland authentication file
+      # before this service is created:
+      #
+      #   scripts/install-docker-gui-support.sh
+      - type: bind
+        source: "${HOST_XAUTHORITY_FILE:?HOST_XAUTHORITY_FILE must match the Xauthority file path on this host}"
+        target: "/run/user/${IMAGE_USER_ID:?IMAGE_USER_ID required}/docker-xwayland.xauth"
+        read_only: true
+        bind:
+          create_host_path: false
+
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+        read_only: true
+        bind:
+          # This directory contains the host X11 sockets. Do not create an empty replacement when
+          # the host is not providing X11.
+          create_host_path: false
+
+      # +-----------------+
+      # | Custom mappings |
+      # +-----------------+
+      # Folders
+      # ...
+      # Files
+      # ...
+
+      # +----------------------+
+      # | SSH agent forwarding |
+      # +----------------------+
+      # Do not mount ${HOME}/.ssh into the container.
+      # That exposes private key files to every process inside the container.
+      #
+      # Instead, mount only the host ssh-agent Unix socket.
+      # The container can ask the agent to sign SSH challenges, but it does not receive the private
+      # key files.
+      #
+      # If you enable this mount, also set this environment variable:
+      #
+      #   SSH_AUTH_SOCK: /ssh-agent
+      #
+      # The :? syntax makes docker compose fail early if SSH_AUTH_SOCK is not set in the host shell.
+      #
+      #   - type: bind
+      #     source: "${SSH_AUTH_SOCK:?SSH_AUTH_SOCK must match the SSH agent socket path on this host}"
+      #     target: /ssh-agent
+      #     read_only: true
+      #     bind:
+      #       create_host_path: false
+
+      # +-----------------+
+      # | Device mappings |
+      # +-----------------+
+      # USB bus numbers and device numbers can change after reconnecting a device.
+      # Mounting the directory keeps new nodes visible.
+      # The matching device_cgroup_rules entry below grants access to their major/minor IDs.
+      - type: bind
+        source: /dev/bus/usb
+        target: /dev/bus/usb
+        bind:
+          create_host_path: false
+
+      # Input devices can also appear after startup, but exposing this directory can let the
+      # container read host keyboards and other input.
+      # Enable both this mount and the cgroup rule below only when required.
+      # - type: bind
+      #   source: /dev/input
+      #   target: /dev/input
+      #   bind:
+      #     create_host_path: false
+
+    devices:
+      # Docker scans /dev/dri when it creates the container.
+      # Each machine can therefore expose its own cardX and renderDXXX names and IDs without placing
+      # those host-specific values in this file.
+      - /dev/dri:/dev/dri:rw
+
+      # Use devices for a serial node that exists before startup and normally keeps the same path.
+      # Recreate the container if it reconnects under a different name, unless the project
+      # implements a hotplug strategy.
+      # - /dev/ttyACM0:/dev/ttyACM0:rw
+
+    device_cgroup_rules:
+      # The host creates raw USB nodes.
+      # The container only needs permission to read and write them; it does not need permission to
+      # create device nodes (letter 'm').
+      - "c 189:* rw"
+
+      # Enable with the /dev/input bind mount above.
+      # Read permission is enough for normal input; use "rw" only when output such as rumble is
+      # required.
+      # - "c 13:* r"
+
+    environment:
+      # Use the host XWayland display and the Xauthority file mounted above.
+      DISPLAY: "${DISPLAY:?DISPLAY must match the graphical display available on this host}"
+      XDG_RUNTIME_DIR: "/run/user/${IMAGE_USER_ID:?IMAGE_USER_ID required}"
+      XAUTHORITY: "/run/user/${IMAGE_USER_ID:?IMAGE_USER_ID required}/docker-xwayland.xauth"
+      CONTAINER_ROS_WORKSPACE: "{{ img_workspace_dir }}"
+
+      # Force Qt applications such as RViz and Gazebo to use X11 through XWayland instead of
+      # attempting a native Wayland connection.
+      QT_QPA_PLATFORM: "xcb"
+      QT_X11_NO_MITSHM: "1"
+
+      # ${TERM:-xterm-256color} uses the host TERM value when it is non-empty and otherwise supplies
+      # the shown default.
+      TERM: "${TERM:-xterm-256color}"
+      {% if use_host_nvidia_driver %}
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "all"
+      {% endif %}
+
+    # Add the GID of the render device group so that all container processes (including those opened
+    # by VS Code) can access /dev/dri/renderD* for GPU-accelerated rendering (Gazebo, RViz, OpenGL).
+    #
+    # How to find the value for your machine:
+    #   stat -c %g /dev/dri/renderD128
+    #
+    # How to provide RENDER_GID (choose one):
+    #   1. Put the value in an environment file:
+    #        # env_files/production.env
+    #        RENDER_GID=992
+    #      Then select that file explicitly when Compose starts:
+    #        docker compose --env-file env_files/production.env --file compose_files/docker-compose.yaml up
+    #   2. Export in your shell before running docker compose:
+    #        export RENDER_GID=$(stat -c %g /dev/dri/renderD128)
+    #        docker compose --file compose_files/docker-compose.yaml up
+    #   3. Inline when running docker compose:
+    #        RENDER_GID=$(stat -c %g /dev/dri/renderD128) \
+    #          docker compose --file compose_files/docker-compose.yaml up
+    #
+    # group_add is supplementary: it does not replace the primary GID stored in the image and
+    # therefore does not prevent the entrypoint from loading the development environment.
+    # Docker also applies it to docker exec processes.
+    group_add:
+      - "${RENDER_GID:?RENDER_GID must match the GID owning the selected renderD device on this host}"
+
+    # init: true enables a tiny init (tini) as PID 1 inside the container.
+    # It forwards signals (SIGTERM/SIGINT) to the app and reaps zombie processes from child workers,
+    # preventing dirty shutdowns and resource leaks.
+    #
+    # It is not a supervisor: it will not restart your app. It only fixes PID-1 semantics.
+    #
+    # Recommended for services that spawn subprocesses or use launchers/daemons, for example ros2
+    # launch, drivers, simulators and agent tooling.
+    init: true
+
+    # Compose sends SIGTERM first. Allow ROS nodes, rosbag recorders and simulators to close files
+    # and devices before Compose sends SIGKILL.
+    stop_grace_period: 30s

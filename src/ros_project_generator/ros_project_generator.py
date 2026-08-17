@@ -72,6 +72,12 @@ class RosProjectCreator:
             self._project_id = Utilities.clean_str(project_id)
             Utilities.assert_non_empty(self._project_id, "Project's id must be a non-empty string")
 
+            if not Utilities.is_valid_project_id(self._project_id):
+                raise RosProjectCreatorException(
+                    'Project id must start with a lowercase letter or digit and contain only '
+                    f"lowercase letters, digits, '-' and '_'; found '{self._project_id}'"
+                )
+
             if project_dir is None:
                 raise RosProjectCreatorException('Project directory must be provided')
 
@@ -128,6 +134,7 @@ class RosProjectCreator:
             self._img_id = Utilities.clean_str(img_id) or f'{self._project_id}:latest'
 
             self._use_host_nvidia_driver = use_host_nvidia_driver
+            self._use_vscode_project = use_vscode_project
 
             # Check if the git binary exists in the system.
             self._check_git_binary_existence()
@@ -144,7 +151,7 @@ class RosProjectCreator:
             docker_result = self._install_items()
 
             # Create VS Code project if requested.
-            if use_vscode_project:
+            if self._use_vscode_project:
                 self._vscode_project_creator = VscodeProjectCreator(
                     project_id=self._project_id,
                     ros_distro=self._ros_variant.get_distro(),
@@ -194,8 +201,24 @@ class RosProjectCreator:
             ResourceSpec.file('.gitignore', 'git/dot_gitignore'),
             ResourceSpec.directory('.gitlab', 'git/gitlab'),
             ResourceSpec.file(str(relative_deps_file), 'deps/deps.repos'),
+            ResourceSpec.template(
+                'docker/compose_files/docker-compose.yaml',
+                'docker/docker-compose.yaml.j2',
+                {
+                    'project_id': self._project_id,
+                    'service': f'{self._img_id.replace(":", "_").replace("/", "_")}_cont',
+                    'img_id': self._img_id,
+                    'img_workspace_dir': '/workspace',
+                    'img_datasets_dir': '/datasets',
+                    'use_host_nvidia_driver': self._use_host_nvidia_driver,
+                },
+            ),
             ResourceSpec.file('pyproject.toml', 'pyproject.toml'),
-            ResourceSpec.template('README.md', 'README.j2', {'project_id': self._project_id}),
+            ResourceSpec.template(
+                'README.md',
+                'README.j2',
+                {'project_id': self._project_id, 'img_id': self._img_id, 'ros_distro': self._ros_variant.get_distro()},
+            ),
             ResourceSpec.file('src/.clang-format', 'clang/dot_clang-format'),
             ResourceSpec.file('src/.clang-tidy', 'clang/dot_clang-tidy'),
             ResourceSpec.directory(str(relative_deps_target_dir)),
@@ -242,11 +265,9 @@ class RosProjectCreator:
                     output_dir=docker_dir,
                     base_img=self._base_img,
                     use_host_nvidia_driver=self._use_host_nvidia_driver,
-                    # A generated ROS project has a real workspace. Enable the
-                    # mount in both the production Compose file and the copy
-                    # used by Dev Containers. robotics_dockers leaves this
-                    # mapping commented for standalone image contexts.
-                    enable_workspace_mount=True,
+                    # ros_project_generator owns its production and development
+                    # Compose files. The default robotics_dockers API therefore
+                    # supplies only the image build context in this integration.
                     meta_title=f'{self._project_id} ROS 2 Docker image',
                     meta_desc=f'Docker image for the {self._project_id} ROS 2 development project',
                     rosdep_packages_dir='../src',

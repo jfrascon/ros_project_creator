@@ -1,5 +1,39 @@
-# Project {{ project_id }}
+# {{ project_id }}
 
-[![GitLab CI](https://img.shields.io/badge/GitLab%20CI-Unknown-lightgrey?logo=gitlab)]()
-[![Coverage](https://img.shields.io/badge/Coverage-Unknown-lightgrey?logo=gitlab)]()
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+ROS 2 {{ ros_distro }} project using the Docker image `{{ img_id }}`.
+
+## Build the image
+
+The image user must use the same numeric UID and primary GID that own the host workspace:
+
+```bash
+cd docker
+python3 build.py developer "$(id --user)" "$(id --group)"
+```
+
+The primary group name defaults to the user name. Use `--group GROUP_NAME` when the names must differ.
+
+## Run the project
+
+Create one environment file for each deployment machine. The identity helper copies the user information stored in the selected image; then you add the host paths and device values required by `docker-compose.yaml`.
+
+```bash
+cd docker
+python3 robotics_dockers_user_env.py {{ img_id }} \
+    --output env_files/production.env
+
+# Edit env_files/production.env before starting the project.
+docker compose \
+    --env-file env_files/production.env \
+    --file compose_files/docker-compose.yaml \
+    up -d
+```
+
+An environment file may be versioned when it contains shared machine settings and no passwords, tokens or other secrets. The workspace is mounted at `/workspace` inside the container.
+
+## Workspace
+
+- `src/0_deps/` contains repositories imported from `deps.repos`.
+- `src/bringup/` contains launch, configuration and visualization resources.
+- `src/simulation/` contains simulation-specific resources.
+- `docker/` contains the image build context and production Compose files.
