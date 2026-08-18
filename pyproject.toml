@@ -12,7 +12,7 @@ dependencies = [
   "jinja2",
   "pre-commit",
   "PyYAML",
-  "robotics-dockers @ git+https://github.com/jfrascon/robotics_dockers.git@v0.2.0",
+  "robotics-dockers @ git+https://github.com/jfrascon/robotics_dockers.git@v1.0.0",
 ]
 keywords = ["ROS", "automation", "project generator", "Robotics DevOps"]
 classifiers = [

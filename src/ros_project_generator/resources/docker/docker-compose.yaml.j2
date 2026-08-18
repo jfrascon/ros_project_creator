@@ -258,7 +258,8 @@ services:
     # It forwards signals (SIGTERM/SIGINT) to the app and reaps zombie processes from child workers,
     # preventing dirty shutdowns and resource leaks.
     #
-    # It is not a supervisor: it will not restart your app. It only fixes PID-1 semantics.
+    # It is not a supervisor: it will not restart your app.
+    # It only fixes PID-1 semantics.
     #
     # Recommended for services that spawn subprocesses or use launchers/daemons, for example ros2
     # launch, drivers, simulators and agent tooling.
