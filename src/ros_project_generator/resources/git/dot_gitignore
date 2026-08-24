@@ -26,6 +26,7 @@ env/
 
 # Tooling
 .cache/
+.pre-commit-cache/
 .devcontainer/
 .codex/
 .copilot/
